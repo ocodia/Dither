@@ -17,7 +17,7 @@ export function createLayer(type, canvas, options = {}) {
   const layer = { id: uid(), name: type === 'image' ? 'Image' : type === 'text' ? 'Text' : 'Rectangle', type,
     visible: true, locked: false, opacity: 1,
     transform: { x: canvas.width / 2, y: canvas.height / 2, width, height, rotation: 0, flipX: false, flipY: false }, effects: [] };
-  if (type === 'text') layer.text = { content: 'Make something\nyour own.', fontFamily: 'Arial', fontSize: 48, fontWeight: '700', fontStyle: 'normal', colour: '#f4f6fa', align: 'left', lineHeight: 1.2, letterSpacing: 0 };
+  if (type === 'text') layer.text = { content: 'Text', fontFamily: 'Arial', fontSize: 48, fontWeight: '700', fontStyle: 'normal', colour: '#f4f6fa', align: 'left', lineHeight: 1.2, letterSpacing: 0 };
   if (type === 'shape') layer.shape = { kind: 'rectangle', fill: '#6799f5', fillOpacity: 1, stroke: '#dbe7ff', strokeWidth: 0, strokeOpacity: 1, radius: 16, startArrow: false, endArrow: true, arrowSize: 22 };
   if (type === 'image') layer.assetId = '';
   return Object.assign(layer, options);

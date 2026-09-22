@@ -1,60 +1,184 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#181b20"><meta name="description" content="A local-first, non-destructive image compositor. Your canvas, your computer.">
-  <title>Dither — local image editor</title>
-  <link rel="icon" href="./icons/app-icon.svg" type="image/svg+xml"><link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./icons/bootstrap-icons.min.css"><link rel="stylesheet" href="./css/app.css">
-</head>
-<body>
-  <header class="topbar">
-    <a class="brand" href="./" aria-label="Dither home"><img src="./icons/app-icon.svg" alt="" width="27" height="27"><span>dither<span class="brand-dot">.</span></span></a>
-    <div class="top-actions" role="toolbar" aria-label="Document actions">
-      <button data-action="new" title="New document"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i><span>New</span></button>
-      <button data-action="open" title="Open saved project (Ctrl/⌘ O)"><i class="bi bi-folder2-open" aria-hidden="true"></i><span>Open</span></button>
-      <button data-action="save" title="Save locally (Ctrl/⌘ S)"><i class="bi bi-floppy" aria-hidden="true"></i><span>Save</span></button>
-    </div>
-    <div class="project-heading"><input id="project-name" aria-label="Project name" value="Untitled" maxlength="100"><span id="save-state">Not saved</span></div>
-    <div class="history-actions"><button data-action="undo" aria-label="Undo" title="Undo (Ctrl/⌘ Z)"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button><button data-action="redo" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button></div>
-    <button data-action="import" class="import-button" title="Import PNG, JPEG or WebP"><i class="bi bi-image" aria-hidden="true"></i><span>Import image</span></button>
-    <button data-action="export" class="primary"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span>Export PNG</span></button>
-    <button data-action="panels" class="panel-toggle" aria-label="Toggle inspector" title="Toggle inspector"><i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i></button>
-  </header>
-  <div class="contextbar"><div><span class="eyebrow">WORKSPACE</span><span id="selection-name">Document</span></div><div class="context-hint">Local by design <i class="bi bi-shield-check" aria-hidden="true"></i></div></div>
-  <main class="editor">
-    <nav class="tools" aria-label="Editing tools">
-      <button data-tool="move" aria-pressed="true" aria-label="Move tool" title="Move (V)"><i class="bi bi-cursor" aria-hidden="true"></i></button>
-      <button data-tool="hand" aria-pressed="false" aria-label="Pan tool" title="Pan (H / hold Space)"><i class="bi bi-hand-index" aria-hidden="true"></i></button>
-      <span class="tool-divider"></span>
-      <button data-action="text" aria-label="Add text" title="Add text (T)"><i class="bi bi-type" aria-hidden="true"></i></button>
-      <button data-action="rectangle" aria-label="Add rectangle" title="Add rectangle (R)"><i class="bi bi-square" aria-hidden="true"></i></button>
-      <button data-action="ellipse" aria-label="Add ellipse" title="Add ellipse (E)"><i class="bi bi-circle" aria-hidden="true"></i></button>
-      <button data-action="line" aria-label="Add line" title="Add line (L)"><i class="bi bi-slash-lg" aria-hidden="true"></i></button>
-      <button data-action="arrow" aria-label="Add arrow" title="Add arrow (A)"><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
-      <span class="tool-divider"></span>
-      <button data-action="import" aria-label="Import images" title="Import images"><i class="bi bi-image" aria-hidden="true"></i></button>
-      <button data-action="help" class="tool-help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts"><i class="bi bi-question-circle" aria-hidden="true"></i></button>
-    </nav>
-    <section id="workspace" class="workspace" tabindex="0" aria-label="Canvas workspace. Use arrow keys to move a selected layer.">
-      <div class="workspace-label"><span id="document-label">UNTITLED</span><span id="canvas-size"></span></div>
-      <div id="stage" class="stage"><canvas id="artwork" aria-label="Document artwork"></canvas><svg id="overlay" xmlns="http://www.w3.org/2000/svg" aria-label="Selection controls"></svg></div>
-      <div id="empty-tip" class="empty-tip"><i class="bi bi-image" aria-hidden="true"></i><strong>A little space for a big idea.</strong><span>Drop an image here, or start with a shape.</span><button data-action="import">Import your first image <i class="bi bi-arrow-right" aria-hidden="true"></i></button></div>
-      <div id="processing" class="processing" hidden>Rendering…</div>
-      <div class="zoom-controls"><button data-action="zoom-out" aria-label="Zoom out" title="Zoom out"><i class="bi bi-dash" aria-hidden="true"></i></button><button data-action="zoom-reset" id="zoom-value" title="Reset zoom to 100%">100%</button><button data-action="zoom-in" aria-label="Zoom in" title="Zoom in"><i class="bi bi-plus" aria-hidden="true"></i></button><span></span><button data-action="fit" aria-label="Fit canvas" title="Fit canvas (Ctrl/⌘ 0)"><i class="bi bi-arrows-angle-expand" aria-hidden="true"></i></button></div>
-    </section>
-    <aside id="inspector" class="inspector" aria-label="Inspector">
-      <div class="inspector-tabs" role="tablist" aria-label="Layer settings"><button id="tab-properties" role="tab" aria-selected="true" aria-controls="properties" data-tab="properties">Properties</button><button id="tab-effects" role="tab" aria-selected="false" aria-controls="effects" data-tab="effects">Effects <span id="effect-count">0</span></button></div>
-      <div class="settings-scroll"><section id="properties" role="tabpanel" aria-labelledby="tab-properties"></section><section id="effects" role="tabpanel" aria-labelledby="tab-effects" hidden></section></div>
-      <section class="layers-panel"><div class="panel-heading"><h2>Layers <span id="layer-count">0</span></h2><div><button data-action="duplicate" aria-label="Duplicate layer" title="Duplicate (Ctrl/⌘ D)"><i class="bi bi-copy" aria-hidden="true"></i></button><button data-action="delete" aria-label="Delete layer" title="Delete layer"><i class="bi bi-trash3" aria-hidden="true"></i></button></div></div><div id="layers" class="layer-list" aria-label="Layers"></div><div class="layer-footer"><span id="layer-hint">Everything stays editable</span><button data-action="lower" aria-label="Lower layer" title="Lower layer"><i class="bi bi-arrow-down" aria-hidden="true"></i></button><button data-action="raise" aria-label="Raise layer" title="Raise layer"><i class="bi bi-arrow-up" aria-hidden="true"></i></button></div></section>
-    </aside>
-  </main>
-  <footer class="statusbar"><span><span class="status-dot"></span> <span id="connection-state">On-device workspace</span></span><span id="pointer-status">Ready to create</span><span id="dimensions-status"></span><button id="install-button" hidden>Install Dither</button><button id="update-button" hidden>Update available</button></footer>
-  <div id="toast" role="status" aria-live="polite" hidden></div>
-  <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
-  <dialog id="new-dialog" aria-labelledby="new-title"><form id="new-form"><div class="dialog-brand"><img src="./icons/app-icon.svg" alt="" width="38" height="38"><span>DITHER / NEW DOCUMENT</span></div><h1 id="new-title">Start with a blank canvas.</h1><p>Your ideas. Your files. All on your device.</p><label>Document name<input name="name" value="Untitled" maxlength="100" required></label><label>Preset<select name="preset"><option value="1600,1000">Landscape · 1600 × 1000</option><option value="1920,1080">Full HD · 1920 × 1080</option><option value="1080,1080">Square · 1080 × 1080</option><option value="1080,1920">Portrait · 1080 × 1920</option><option value="custom">Custom size</option></select></label><div class="field-grid"><label>Width<input name="width" type="number" min="1" max="8192" value="1600" required></label><label>Height<input name="height" type="number" min="1" max="8192" value="1000" required></label></div><div class="field-grid"><label>Background<select name="background"><option value="transparent">Transparent</option><option value="solid">Solid colour</option></select></label><label>Colour<input name="colour" type="color" value="#ffffff" disabled></label></div><p id="new-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-action="open">Open saved</button><button type="button" data-close>Cancel</button><button type="submit" class="primary">Create document <i class="bi bi-arrow-right" aria-hidden="true"></i></button></div></form></dialog>
-  <dialog id="open-dialog" aria-labelledby="open-title"><div class="dialog-brand">YOUR DEVICE / PROJECTS</div><h1 id="open-title">Pick up where you left off.</h1><p>Editable projects saved in this browser.</p><div id="project-list"></div><div class="dialog-actions"><button data-close>Close</button></div></dialog>
-  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-brand">A FEW USEFUL SHORTCUTS</div><h1 id="help-title">Keep your hands on the keys.</h1><dl class="shortcuts"><dt>Undo / Redo</dt><dd>Ctrl/⌘ Z / Shift Z</dd><dt>Save / Open local project</dt><dd>Ctrl/⌘ S / O</dd><dt>Duplicate / Delete layer</dt><dd>Ctrl/⌘ D / Delete</dd><dt>Move / Pan</dt><dd>V / H or hold Space</dd><dt>Text / Rectangle / Ellipse</dt><dd>T / R / E</dd><dt>Line / Arrow</dt><dd>L / A</dd><dt>Nudge / Large nudge</dt><dd>Arrows / Shift Arrows</dd><dt>Zoom / Fit</dt><dd>Ctrl/⌘ + − / 0</dd><dt>Preserve proportions</dt><dd>Shift while resizing</dd><dt>Resize from centre</dt><dd>Alt/Option while resizing</dd><dt>Snap rotation to 15°</dt><dd>Shift while rotating</dd><dt>Cancel transformation</dt><dd>Escape</dd></dl><div class="dialog-actions"><button data-close class="primary">Got it</button></div></dialog>
-  <noscript>Dither needs JavaScript enabled to edit images locally.</noscript><script type="module" src="./js/app.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#181b20" />
+    <meta name="description" content="A local-first, non-destructive image compositor. Your canvas, your computer." />
+    <title>Dither — local image editor</title>
+    <link rel="icon" href="./icons/app-192.png" type="image/png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./icons/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="./css/app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Dither home"><img src="./icons/app-192.png" alt="" width="27" height="27" /><span>dither</span></a>
+      <div class="top-actions" role="toolbar" aria-label="Document actions">
+        <button data-action="new" title="New document"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i><span>New</span></button>
+        <button data-action="open" title="Open saved project (Ctrl/⌘ O)">
+          <i class="bi bi-folder2-open" aria-hidden="true"></i><span>Open</span>
+        </button>
+        <button data-action="save" title="Save locally (Ctrl/⌘ S)"><i class="bi bi-floppy" aria-hidden="true"></i><span>Save</span></button>
+      </div>
+      <div class="project-heading">
+        <input id="project-name" aria-label="Project name" value="Untitled" maxlength="100" /><span id="save-state">Not saved</span>
+      </div>
+      <div class="history-actions">
+        <button data-action="undo" aria-label="Undo" title="Undo (Ctrl/⌘ Z)"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button
+        ><button data-action="redo" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
+      </div>
+      <button data-action="import" class="import-button" title="Import PNG, JPEG or WebP">
+        <i class="bi bi-image" aria-hidden="true"></i><span>Import image</span>
+      </button>
+      <button data-action="export" class="primary"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span>Export PNG</span></button>
+      <button data-action="panels" class="panel-toggle" aria-label="Toggle inspector" title="Toggle inspector">
+        <i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i>
+      </button>
+    </header>
+    <main class="editor">
+      <nav class="tools" aria-label="Editing tools">
+        <button data-tool="move" aria-pressed="true" aria-label="Move tool" title="Move (V)"><i class="bi bi-cursor" aria-hidden="true"></i></button>
+        <button data-tool="hand" aria-pressed="false" aria-label="Pan tool" title="Pan (H / hold Space)">
+          <i class="bi bi-hand-index" aria-hidden="true"></i>
+        </button>
+        <span class="tool-divider"></span>
+        <button data-action="text" aria-label="Add text" title="Add text (T)"><i class="bi bi-type" aria-hidden="true"></i></button>
+        <button data-action="rectangle" aria-label="Add rectangle" title="Add rectangle (R)"><i class="bi bi-square" aria-hidden="true"></i></button>
+        <button data-action="ellipse" aria-label="Add ellipse" title="Add ellipse (E)"><i class="bi bi-circle" aria-hidden="true"></i></button>
+        <button data-action="line" aria-label="Add line" title="Add line (L)"><i class="bi bi-slash-lg" aria-hidden="true"></i></button>
+        <button data-action="arrow" aria-label="Add arrow" title="Add arrow (A)"><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
+        <span class="tool-divider"></span>
+        <button data-action="import" aria-label="Import images" title="Import images"><i class="bi bi-image" aria-hidden="true"></i></button>
+        <button data-action="help" class="tool-help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">
+          <i class="bi bi-question-circle" aria-hidden="true"></i>
+        </button>
+      </nav>
+      <section id="workspace" class="workspace" tabindex="0" aria-label="Canvas workspace. Use arrow keys to move a selected layer.">
+        <div class="workspace-label"><span id="document-label">UNTITLED</span><span id="canvas-size"></span></div>
+        <div id="stage" class="stage">
+          <canvas id="artwork" aria-label="Document artwork"></canvas
+          ><svg id="overlay" xmlns="http://www.w3.org/2000/svg" aria-label="Selection controls"></svg>
+        </div>
+        <div id="empty-tip" class="empty-tip">
+          <i class="bi bi-image" aria-hidden="true"></i><span>Drop an image here, or start with a shape.</span
+          ><button data-action="import">Import your first image <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+        </div>
+        <div id="processing" class="processing" hidden>Rendering…</div>
+        <div class="zoom-controls">
+          <button data-action="zoom-out" aria-label="Zoom out" title="Zoom out"><i class="bi bi-dash" aria-hidden="true"></i></button
+          ><button data-action="zoom-reset" id="zoom-value" title="Reset zoom to 100%">100%</button
+          ><button data-action="zoom-in" aria-label="Zoom in" title="Zoom in"><i class="bi bi-plus" aria-hidden="true"></i></button><span></span
+          ><button data-action="fit" aria-label="Fit canvas" title="Fit canvas (Ctrl/⌘ 0)">
+            <i class="bi bi-arrows-angle-expand" aria-hidden="true"></i>
+          </button>
+        </div>
+      </section>
+      <aside id="inspector" class="inspector" aria-label="Inspector">
+        <div class="inspector-tabs" role="tablist" aria-label="Layer settings">
+          <button id="tab-properties" role="tab" aria-selected="true" aria-controls="properties" data-tab="properties">Properties</button
+          ><button id="tab-effects" role="tab" aria-selected="false" aria-controls="effects" data-tab="effects">
+            Effects <span id="effect-count">0</span>
+          </button>
+        </div>
+        <div class="settings-scroll">
+          <section id="properties" role="tabpanel" aria-labelledby="tab-properties"></section>
+          <section id="effects" role="tabpanel" aria-labelledby="tab-effects" hidden></section>
+        </div>
+        <section class="layers-panel">
+          <div class="panel-heading">
+            <h2>Layers <span id="layer-count">0</span></h2>
+            <div>
+              <button data-action="duplicate" aria-label="Duplicate layer" title="Duplicate (Ctrl/⌘ D)">
+                <i class="bi bi-copy" aria-hidden="true"></i></button
+              ><button data-action="delete" aria-label="Delete layer" title="Delete layer"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+            </div>
+          </div>
+          <div id="layers" class="layer-list" aria-label="Layers"></div>
+          <div class="layer-footer">
+            <button data-action="lower" aria-label="Lower layer" title="Lower layer"><i class="bi bi-arrow-down" aria-hidden="true"></i></button
+            ><button data-action="raise" aria-label="Raise layer" title="Raise layer"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+          </div>
+        </section>
+      </aside>
+    </main>
+    <footer class="statusbar">
+      <span id="pointer-status">Ready to create</span><span id="dimensions-status"></span><button id="install-button" hidden>Install Dither</button
+      ><button id="update-button" hidden>Update available</button>
+    </footer>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+    <dialog id="new-dialog" aria-labelledby="new-title">
+      <form id="new-form">
+        <h1 id="new-title">New document</h1>
+        <label>Document name<input name="name" value="Untitled" maxlength="100" required /></label
+        ><label
+          >Preset<select name="preset">
+            <option value="1600,1000">Landscape · 1600 × 1000</option>
+            <option value="1920,1080">Full HD · 1920 × 1080</option>
+            <option value="1080,1080">Square · 1080 × 1080</option>
+            <option value="1080,1920">Portrait · 1080 × 1920</option>
+            <option value="custom">Custom size</option>
+          </select></label
+        >
+        <div class="field-grid">
+          <label>Width<input name="width" type="number" min="1" max="8192" value="1600" required /></label
+          ><label>Height<input name="height" type="number" min="1" max="8192" value="1000" required /></label>
+        </div>
+        <div class="field-grid">
+          <label
+            >Background<select name="background">
+              <option value="transparent">Transparent</option>
+              <option value="solid">Solid colour</option>
+            </select></label
+          ><label>Colour<input name="colour" type="color" value="#ffffff" disabled /></label>
+        </div>
+        <p id="new-error" class="error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" data-action="open">Open saved</button><button type="button" data-close>Cancel</button
+          ><button type="submit" class="primary">Create document <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="open-dialog" aria-labelledby="open-title">
+      <div class="dialog-brand">YOUR DEVICE / PROJECTS</div>
+      <h1 id="open-title">Pick up where you left off.</h1>
+      <p>Editable projects saved in this browser.</p>
+      <div id="project-list"></div>
+      <div class="dialog-actions"><button data-close>Close</button></div>
+    </dialog>
+    <dialog id="help-dialog" aria-labelledby="help-title">
+      <div class="dialog-brand">A FEW USEFUL SHORTCUTS</div>
+      <h1 id="help-title">Keep your hands on the keys.</h1>
+      <dl class="shortcuts">
+        <dt>Undo / Redo</dt>
+        <dd>Ctrl/⌘ Z / Shift Z</dd>
+        <dt>Save / Open local project</dt>
+        <dd>Ctrl/⌘ S / O</dd>
+        <dt>Duplicate / Delete layer</dt>
+        <dd>Ctrl/⌘ D / Delete</dd>
+        <dt>Move / Pan</dt>
+        <dd>V / H or hold Space</dd>
+        <dt>Text / Rectangle / Ellipse</dt>
+        <dd>T / R / E</dd>
+        <dt>Line / Arrow</dt>
+        <dd>L / A</dd>
+        <dt>Nudge / Large nudge</dt>
+        <dd>Arrows / Shift Arrows</dd>
+        <dt>Zoom / Fit</dt>
+        <dd>Ctrl/⌘ + − / 0</dd>
+        <dt>Preserve proportions</dt>
+        <dd>Shift while resizing</dd>
+        <dt>Resize from centre</dt>
+        <dd>Alt/Option while resizing</dd>
+        <dt>Snap rotation to 15°</dt>
+        <dd>Shift while rotating</dd>
+        <dt>Cancel transformation</dt>
+        <dd>Escape</dd>
+      </dl>
+      <div class="dialog-actions"><button data-close class="primary">Got it</button></div>
+    </dialog>
+    <noscript>Dither needs JavaScript enabled to edit images locally.</noscript>
+    <script type="module" src="./js/app.js"></script>
+  </body>
 </html>

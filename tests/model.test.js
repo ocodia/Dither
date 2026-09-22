@@ -6,7 +6,7 @@ test('editable document serialises without binary assets or runtime state', () =
   const doc = createDocument(); doc.layers.push(createLayer('text', doc.canvas), createLayer('shape', doc.canvas));
   setEffect(doc.layers[0], 'dither', { intensity: .6 });
   assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
-  assert.equal(doc.layers[0].text.content, 'Make something\nyour own.');
+  assert.equal(doc.layers[0].text.content, 'Text');
 });
 test('project validation rejects unsupported versions, missing assets and bad dimensions', () => {
   assert.throws(() => validateDocument({ version: 999 }), /version/);

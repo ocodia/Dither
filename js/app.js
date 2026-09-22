@@ -10,7 +10,7 @@ import { propertiesHTML, effectsHTML, layersHTML, escapeHTML, icon } from './com
 const $ = selector => document.querySelector(selector);
 let doc = createDocument(), assets = new AssetStore(), selectedId = null, activeTab = 'properties';
 let edit = null, toastTimer, rendering = false, renderNeeded = false, frame = 0, saving = false, exporting = false, documentEpoch = 0, hasSaved = false;
-const renderer = new DocumentRenderer(), openedEffects = new Set(['dither']);
+const renderer = new DocumentRenderer(), openedEffects = new Set(['dither']), collapsedProperties = new Set();
 const selected = () => doc.layers.find(l => l.id === selectedId) || null;
 const history = new History(() => refresh());
 const workspace = new Workspace({ element: $('#workspace'), stage: $('#stage'), overlay: $('#overlay'), getDocument: () => doc, getSelected: selected,
@@ -37,10 +37,10 @@ function refresh() {
   const layer = selected();
   const activeField = document.activeElement?.closest('[data-path]');
   // Keep the focused control alive so typing and Tab navigation survive a commit.
-  if (!edit && !activeField) { $('#properties').innerHTML = propertiesHTML(doc, layer); $('#effects').innerHTML = effectsHTML(layer, openedEffects); }
+  if (!edit && !activeField) { $('#properties').innerHTML = propertiesHTML(doc, layer, collapsedProperties); $('#effects').innerHTML = effectsHTML(layer, openedEffects); }
   $('#layers').innerHTML = layersHTML(doc, selectedId); $('#layer-count').textContent = doc.layers.length;
   $('#effect-count').textContent = layer?.effects.filter(e => e.enabled).length || 0;
-  $('#selection-name').textContent = layer?.name || 'Document'; $('#document-label').textContent = doc.name.toUpperCase();
+  $('#document-label').textContent = doc.name.toUpperCase();
   $('#canvas-size').textContent = `${doc.canvas.width} × ${doc.canvas.height}`; $('#dimensions-status').textContent = `${doc.canvas.width} × ${doc.canvas.height} px`;
   if (document.activeElement !== $('#project-name')) $('#project-name').value = doc.name;
   $('#save-state').textContent = saving ? 'Saving…' : history.dirty ? 'Unsaved changes' : hasSaved ? 'Saved on this device' : 'Not saved';
@@ -185,6 +185,10 @@ for (const id of ['properties', 'effects']) {
   container.addEventListener('focusout', () => finishEdit());
 }
 $('#effects').addEventListener('toggle', e => { const type = e.target.dataset.effect; if (type) e.target.open ? openedEffects.add(type) : openedEffects.delete(type); }, true);
+$('#properties').addEventListener('toggle', e => {
+  const section = e.target.dataset.section;
+  if (section && e.target.isConnected) e.target.open ? collapsedProperties.delete(section) : collapsedProperties.add(section);
+}, true);
 $('#layers').addEventListener('click', e => {
   const button = e.target.closest('[data-layer-action]'), row = button?.closest('[data-layer]'); if (!row) return;
   finishEdit(); const layer = doc.layers.find(l => l.id === row.dataset.layer);
@@ -247,8 +251,6 @@ window.addEventListener('beforeunload', e => { finishEdit(); if (history.dirty) 
 let installPrompt;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; $('#install-button').hidden = false; });
 $('#install-button').addEventListener('click', async () => { if (!installPrompt) return; await installPrompt.prompt(); installPrompt = null; $('#install-button').hidden = true; });
-function connection() { $('#connection-state').textContent = navigator.onLine ? 'On-device workspace' : 'Offline · ready to create'; }
-window.addEventListener('online', connection); window.addEventListener('offline', connection);
 if ('serviceWorker' in navigator && window.isSecureContext) {
   navigator.serviceWorker.register('./sw.js', { type: 'module' }).then(registration => {
     const offerUpdate = () => { if (registration.waiting && navigator.serviceWorker.controller) $('#update-button').hidden = false; };
@@ -257,4 +259,4 @@ if ('serviceWorker' in navigator && window.isSecureContext) {
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (!$('#update-button').hidden) location.reload(); });
   }).catch(() => toast('Offline installation is unavailable. Editing and local saves still work.', true));
 }
-connection(); refresh(); workspace.fit(); $('#new-dialog').showModal();
+refresh(); workspace.fit(); $('#new-dialog').showModal();
