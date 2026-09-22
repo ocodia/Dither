@@ -1,6 +1,6 @@
 # Dither
 
-A local-first image compositor built with native browser APIs. Images, text, shapes, transforms and effects stay editable until export. The application uses the supplied Bootstrap Icons v1.13.1 assets locally; no CDN, framework, account, backend or production dependency is required.
+A local-first image compositor built with native browser APIs. Images, text, shapes, transforms and effects stay editable until export. No CDN, framework, account, backend or production dependency is required.
 
 ## Run
 
