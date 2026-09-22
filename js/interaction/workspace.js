@@ -5,7 +5,8 @@ export class Workspace {
     Object.assign(this, { element, stage, overlay, getDocument, getSelected, select, preview, commit, beforeGesture, onView });
     this.view = { x: 0, y: 0, zoom: 1 }; this.tool = 'move'; this.space = false; this.gesture = null; this.autoFit = true;
     element.addEventListener('pointerdown', e => this.down(e));
-    element.addEventListener('pointermove', e => this.move(e));
+    element.addEventListener('pointermove', e => { this.pointer = { clientX: e.clientX, clientY: e.clientY }; this.move(e); });
+    element.addEventListener('pointerleave', () => { this.pointer = null; });
     element.addEventListener('pointerup', () => this.finish());
     element.addEventListener('pointercancel', () => this.finish(true));
     element.addEventListener('lostpointercapture', () => this.finish(true));

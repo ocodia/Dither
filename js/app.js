@@ -53,7 +53,7 @@ function updateSaveButton() {
   const draftChanged = edit && Object.keys(edit.before).some(key => JSON.stringify(edit.before[key]) !== JSON.stringify(edit.target[key]));
   $('[data-action=save]').disabled = saving || (hasSaved && !history.dirty && !draftChanged);
 }
-function addLayer(kind) {
+function addLayer(kind, atPointer = false) {
   finishEdit(); const layer = createLayer(kind === 'text' ? 'text' : 'shape', doc.canvas);
   if (kind !== 'text') {
     layer.shape.kind = kind; layer.name = kind[0].toUpperCase() + kind.slice(1);
@@ -63,6 +63,7 @@ function addLayer(kind) {
   const scale = Math.min(1, doc.canvas.width * .65 / layer.transform.width, doc.canvas.height * .65 / layer.transform.height);
   layer.transform.width = Math.max(1, layer.transform.width * scale); layer.transform.height = Math.max(1, layer.transform.height * scale);
   if (kind === 'text') layer.text.fontSize = Math.max(8, Math.round(layer.text.fontSize * scale));
+  if (atPointer && workspace.pointer) Object.assign(layer.transform, workspace.point(workspace.pointer));
   selectedId = layer.id; history.execute(insertCommand(doc, layer)); setTab('properties');
 }
 async function importFiles(files) {
@@ -151,7 +152,7 @@ async function exportPNG() {
 const actions = {
   new: () => { finishEdit(); $('#new-error').textContent = ''; $('#new-dialog').showModal(); }, open: openPicker, save, export: exportPNG,
   import: () => $('#image-input').click(), undo: () => { workspace.finish(true); history.undo(); }, redo: () => history.redo(),
-  text: () => addLayer('text'), rectangle: () => addLayer('rectangle'), ellipse: () => addLayer('ellipse'), line: () => addLayer('line'), arrow: () => addLayer('arrow'),
+  text: (atPointer = false) => addLayer('text', atPointer), rectangle: (atPointer = false) => addLayer('rectangle', atPointer), ellipse: (atPointer = false) => addLayer('ellipse', atPointer), line: (atPointer = false) => addLayer('line', atPointer), arrow: (atPointer = false) => addLayer('arrow', atPointer),
   duplicate: () => { const source = selected(); if (!source || source.locked) return; const layer = clone(source); layer.id = uid(); layer.name += ' copy'; layer.transform.x += 20; layer.transform.y += 20; layer.effects.forEach(e => { e.id = uid(); }); selectedId = layer.id; history.execute(insertCommand(doc, layer, doc.layers.indexOf(source) + 1)); },
   delete: () => { const layer = selected(); if (layer && !layer.locked) history.execute(deleteCommand(doc, layer)); },
   raise: () => reorder(1), lower: () => reorder(-1),
@@ -260,7 +261,7 @@ document.addEventListener('keydown', e => {
   }
   if (key === 'delete' || key === 'backspace') { e.preventDefault(); actions.delete(); }
   if (key === 'v' || key === 'h') setTool(key === 'v' ? 'move' : 'hand');
-  if (!e.repeat && !e.altKey && { t: 'text', r: 'rectangle', e: 'ellipse', l: 'line', a: 'arrow' }[key]) actions[{ t: 'text', r: 'rectangle', e: 'ellipse', l: 'line', a: 'arrow' }[key]]();
+  if (!e.repeat && !e.altKey && { t: 'text', r: 'rectangle', e: 'ellipse', l: 'line', a: 'arrow' }[key]) actions[{ t: 'text', r: 'rectangle', e: 'ellipse', l: 'line', a: 'arrow' }[key]](true);
 });
 document.addEventListener('keyup', e => { if (e.code === 'Space') workspace.space = false; });
 window.addEventListener('blur', () => { workspace.space = false; workspace.finish(true); finishEdit(); });

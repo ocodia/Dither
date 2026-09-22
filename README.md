@@ -29,6 +29,10 @@ To deploy on GitHub Pages, publish the directory as static files. All app, icon,
 
 Use the **?** button for keyboard shortcuts. Changes to text fields commit when focus leaves the field. The layer panel displays the topmost layer first. Shape stroke is independent of the optional layer stroke effect.
 
+The document menu at the top of the left toolbar contains New, Open, Save and Export, plus installation/update controls when available. Canvas properties include the project name; use the Canvas properties toolbar button to deselect the current layer and open them. The History inspector tab contains undo/redo and clickable editing states. You can return to later states until a new edit replaces the redo branch. History is session-only and resets when a document is opened.
+
+Creation shortcuts (T, R, E, L, A) place objects centred at the cursor in the workspace, accounting for zoom and pan. Toolbar creation, or shortcuts with the cursor outside the workspace, use the canvas centre. Toasts appear at the workspace's bottom right.
+
 Projects belong to the browser profile and origin where they were saved. Clearing that origin's storage removes local projects. PNG exports are flattened images; portable editable project files are a future addition.
 
 ## Architecture and files
@@ -77,6 +81,7 @@ The optional integration suite uses Playwright with an installed Edge browser. P
 ```powershell
 $env:DITHER_PLAYWRIGHT_PATH = 'C:/path/to/playwright/index.mjs'
 node tests/browser.mjs
+node tests/editor-ui.mjs
 ```
 
 Start the static server first. `DITHER_URL` can target a subdirectory deployment (include the trailing slash); `DITHER_BROWSER` overrides the default `msedge` channel. Each integration run uses a fresh temporary browser profile and writes screenshots and a PNG to `.test-results/`.

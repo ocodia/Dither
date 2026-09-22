@@ -16,9 +16,6 @@
       <nav class="tools" aria-label="Editing tools">
         <button class="document-menu-toggle" popovertarget="document-menu" aria-label="Document actions" title="Document actions"><i class="bi bi-file-earmark" aria-hidden="true"></i></button>
         <span class="tool-divider"></span>
-        <button data-action="undo" aria-label="Undo" title="Undo (Ctrl/⌘ Z)"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>
-        <button data-action="redo" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
-        <span class="tool-divider"></span>
         <button data-tool="move" aria-pressed="true" aria-label="Move tool" title="Move (V)"><i class="bi bi-cursor" aria-hidden="true"></i></button>
         <button data-tool="hand" aria-pressed="false" aria-label="Pan tool" title="Pan (H / hold Space)">
           <i class="bi bi-hand-index" aria-hidden="true"></i>
@@ -48,6 +45,7 @@
           <i class="bi bi-image" aria-hidden="true"></i><span>Drop an image here, or start with a shape.</span
           ><button data-action="import">Import your first image <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
         </div>
+        <div id="toast" role="status" aria-live="polite" hidden></div>
         <div id="processing" class="processing" hidden>Rendering…</div>
         <div class="zoom-controls">
           <button data-action="zoom-out" aria-label="Zoom out" title="Zoom out"><i class="bi bi-dash" aria-hidden="true"></i></button
@@ -96,7 +94,6 @@
       <button id="install-button" hidden><i class="bi bi-download" aria-hidden="true"></i>Install Dither</button>
       <button id="update-button" hidden><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Update available</button>
     </div>
-    <div id="toast" role="status" aria-live="polite" hidden></div>
     <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
     <dialog id="new-dialog" aria-labelledby="new-title">
       <form id="new-form">

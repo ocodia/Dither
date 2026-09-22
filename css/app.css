@@ -716,8 +716,7 @@ dialog .field-grid label {
     display: none;
     position: absolute;
     right: 0;
-    top: 55px;
-    bottom: 29px;
+    top: 0; bottom: 0;
     width: 285px;
     z-index: 5;
     box-shadow: -15px 0 30px #0004;
@@ -737,10 +736,6 @@ dialog .field-grid label {
     max-width: 180px;
     text-align: center;
     font-size: 11px;
-  }
-  
-  #pointer-status {
-    display: none;
   }
   .tools {
     padding: 12px 3px;
@@ -820,3 +815,5 @@ dialog .field-grid label {
 }
 
 .tools{overflow-y:auto;overflow-x:hidden}.tool-utilities{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:auto;padding-top:8px}.tools .panel-toggle{display:none}.inspector-tabs{gap:16px}.document-menu-toggle{position:relative}.document-menu-toggle.has-update::after{content:"";position:absolute;right:5px;top:5px;width:6px;height:6px;background:var(--accent);border-radius:50%}#document-menu{position:fixed;inset:12px auto auto 64px;margin:0;padding:6px;width:190px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);box-shadow:0 8px 30px #0006}#document-menu button{display:flex;width:100%;justify-content:flex-start;padding:10px;gap:12px}#open-dialog h1{margin:16px 0 18px}#open-dialog .dialog-actions{border-top:0;margin-top:16px}.history-list{list-style:none;margin:0;padding:10px}.history-entry{width:100%;justify-content:flex-start;gap:10px;text-align:left;white-space:normal;margin:2px 0;padding:11px 9px;border:1px solid transparent}.history-entry[aria-current]{background:#2b3952;border-color:#425b86}.history-entry.undone{opacity:.5}.history-marker{color:var(--muted)}.history-label{flex:1;overflow-wrap:anywhere}.history-entry small{font-size:9px;color:var(--accent)}@media(max-width:760px){.tools .panel-toggle{display:inline-flex}#document-menu{left:54px}.inspector{max-width:calc(100vw - 48px)}}
+
+.history-actions{display:flex;gap:6px;padding:10px 10px 0}.history-actions button{flex:1;border:1px solid var(--line)}#toast{position:absolute;bottom:16px;right:16px;left:auto;transform:none;max-width:min(600px,calc(100% - 32px));pointer-events:none}

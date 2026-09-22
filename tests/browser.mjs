@@ -14,6 +14,13 @@ page.on('dialog', dialog => dialog.accept());
 const base = process.env.DITHER_URL || 'http://127.0.0.1:4173/';
 const output = resolve('.test-results'); await mkdir(output, { recursive:true });
 const check = (name, details) => console.log(`PASS ${name}${details ? ` — ${details}` : ''}`);
+async function action(name) {
+  const previous = await page.locator('[data-tab][aria-selected="true"]').getAttribute('data-tab');
+  if (['new','open','save','export'].includes(name)) await page.locator('.document-menu-toggle').click();
+  if (['undo','redo'].includes(name)) await page.locator('[data-tab=history]').click();
+  await page.locator(`[data-action=${name}]`).click();
+  if (['undo','redo'].includes(name)) await page.locator(`[data-tab=${previous}]`).click();
+}
 try {
   await page.goto(base); await page.locator('#new-dialog').waitFor({state:'visible'});
   await page.screenshot({ path: resolve(output,'new-document.png') });
@@ -55,8 +62,8 @@ try {
   for (const shape of ['rectangle','ellipse','arrow','line']) { await page.locator(`[data-action=${shape}]`).click(); if (shape==='rectangle') { await property('shape.fill','#93b9ff'); await property('shape.strokeWidth',3); } }
   assert.equal(await page.locator('#layer-count').textContent(),'7');
   await page.locator('[data-action=duplicate]').click(); assert.equal(await page.locator('#layer-count').textContent(),'8');
-  await page.locator('[data-action=delete]').click(); await page.locator('[data-action=undo]').click(); assert.equal(await page.locator('#layer-count').textContent(),'8');
-  await page.locator('[data-action=redo]').click(); assert.equal(await page.locator('#layer-count').textContent(),'7');
+  await page.locator('[data-action=delete]').click(); await action('undo'); assert.equal(await page.locator('#layer-count').textContent(),'8');
+  await action('redo'); assert.equal(await page.locator('#layer-count').textContent(),'7');
   check('Editable typography, all four shapes and command undo/redo');
 
   // Drive real pointer gestures, including a rotation and resize at non-100% zoom.
@@ -69,7 +76,7 @@ try {
   await page.locator('#workspace').focus(); await page.keyboard.press('Shift+ArrowRight'); await page.keyboard.press('Control+z'); await page.keyboard.press('Control+Shift+z');
   check('Canvas selection, pointer move/resize/rotation and keyboard nudges');
 
-  await page.locator('[data-action=save]').click(); await page.getByRole('status').filter({hasText:'Project saved on this device.'}).waitFor();
+  await action('save'); await page.getByRole('status').filter({hasText:'Project saved on this device.'}).waitFor();
   assert.ok(await page.locator('[data-action=save]').isDisabled());
   const saved = await page.evaluate(async()=>{const {listProjects}=await import('./js/storage/projects.js');return (await listProjects())[0];});
   assert.equal(saved.layers.length,7); assert.equal(saved.assets.length,2); assert.ok(saved.layers.find(l=>l.type==='text').text.content.includes('DITHER')); assert.equal(saved.layers.find(l=>l.name==='second-image').effects.length,7);
@@ -80,7 +87,7 @@ try {
   await page.screenshot({path:resolve(output,'editor.png')});
   check('Transactional save and reload/reopen preserve all layers, effects, text and binary asset references');
 
-  const [download] = await Promise.all([page.waitForEvent('download'),page.locator('[data-action=export]').click()]); await download.saveAs(resolve(output,'composition.png'));
+  const [download] = await Promise.all([page.waitForEvent('download'),action('export')]); await download.saveAs(resolve(output,'composition.png'));
   const previewMatches = await page.evaluate(async () => {
     const {loadProject,listProjects}=await import('./js/storage/projects.js');const {DocumentRenderer}=await import('./js/rendering/renderer.js');const projects=await listProjects();const {doc,assets}=await loadProject(projects[0].id);
     const renderer=new DocumentRenderer(),blob=await renderer.exportPNG(doc,assets),image=await createImageBitmap(blob),canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);
@@ -108,7 +115,7 @@ try {
       if(type==='image/jpeg') document.querySelector('#workspace').dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:data}));
       else document.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));
     }
-  });await page.waitForFunction(()=>document.querySelector('#layer-count').textContent==='9');await page.locator('[data-action=undo]').click();await page.locator('[data-action=undo]').click();assert.equal(await page.locator('#layer-count').textContent(),'7');check('JPEG drag-and-drop and WebP clipboard import');
+  });await page.waitForFunction(()=>document.querySelector('#layer-count').textContent==='9');await action('undo');await action('undo');assert.equal(await page.locator('#layer-count').textContent(),'7');check('JPEG drag-and-drop and WebP clipboard import');
 
   const bad = {name:'broken.png',mimeType:'image/png',buffer:Buffer.from('not an image')};await page.locator('#image-input').setInputFiles(bad); await page.getByRole('status').filter({hasText:'could not be decoded'}).waitFor();
   const validation = await page.evaluate(async () => {
