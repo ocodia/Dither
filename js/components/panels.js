@@ -5,13 +5,12 @@ export const layerIcon = layer => layer.type === 'image' ? 'image' : layer.type 
 const field = (label, path, value, type = 'number', extra = '') => `<label>${label}<input data-path="${path}" type="${type}" value="${escapeHTML(value)}" ${extra}></label>`;
 const select = (label, path, value, choices) => `<label>${label}<select data-path="${path}">${choices.map(([id, name]) => `<option value="${id}" ${String(value) === id ? 'selected' : ''}>${name}</option>`).join('')}</select></label>`;
 const check = (label, path, value) => `<label class="inline-check"><input type="checkbox" data-path="${path}" ${value ? 'checked' : ''}>${label}</label>`;
-const heading = (title, name = 'sliders2') => `<div class="section-heading"><h3>${title}</h3>${icon(name)}</div>`;
 const section = html => `<div class="property-section">${html}</div>`;
 const num = (label, path, value, min, max, step = 1) => field(label, path, Number(value.toFixed(2)), 'number', `min="${min}" max="${max}" step="${step}"`);
 
 export function propertiesHTML(doc, layer, collapsed = new Set()) {
   const group = (key, title, html) => `<details class="property-section" data-section="${key}" ${collapsed.has(key) ? '' : 'open'}><summary class="section-heading"><span>${title}</span>${icon('chevron-down')}</summary><div class="property-body">${html}</div></details>`;
-  if (!layer) return group("canvas", "Canvas", `<label class="field-full">Project name<input id="project-name" data-path="name" type="text" value="${escapeHTML(doc.name)}" maxlength="100"></label><div class="field-grid">${num('Width', 'canvas.width', doc.canvas.width, 1, 8192)}${num('Height', 'canvas.height', doc.canvas.height, 1, 8192)}</div><div class="field-full">${check('Transparent background', 'transparent', doc.canvas.background === null)}</div>${field('Background colour', 'canvas.background', doc.canvas.background || '#ffffff', 'color')}<p class="property-note">Dimensions are in pixels. Canvas changes crop the view without altering your layers.</p>`) + group("getting-started", "Make it yours", `<p class="property-note">Import a photograph, add editable type, or build with shapes. Select any layer to refine its properties.</p><div class="button-row"><button data-action="import">${icon('image')} Import image</button><button data-action="text">${icon('type')} Add text</button></div>`);
+  if (!layer) return group("canvas", "Canvas", `<label class="field-full">Project name<input id="project-name" data-path="name" type="text" value="${escapeHTML(doc.name)}" maxlength="100"></label><div class="field-grid">${num('Width', 'canvas.width', doc.canvas.width, 1, 8192)}${num('Height', 'canvas.height', doc.canvas.height, 1, 8192)}</div><div class="field-full">${check('Transparent background', 'transparent', doc.canvas.background === null)}</div>${field('Background colour', 'canvas.background', doc.canvas.background || '#ffffff', 'color')}`);
   const t = layer.transform;
   let html = section(`${field('Layer name', 'name', layer.name, 'text', 'maxlength="100"')}<div class="field-full">${check('Lock layer', 'locked', layer.locked)}</div>`);
   html += `<fieldset ${layer.locked ? 'disabled' : ''} style="border:0;padding:0;margin:0;min-width:0">`;
@@ -28,7 +27,7 @@ export function propertiesHTML(doc, layer, collapsed = new Set()) {
   return html + '</fieldset>';
 }
 export function effectsHTML(layer, opened = new Set()) {
-  if (!layer) return section(`${heading('A little more character', 'sliders2')}<p class="property-note">Select a layer to add adjustments and effects. Every effect stays editable.</p>`);
+  if (!layer) return '<p class="inspector-empty">Select a layer to edit effects.</p>';
   return `<fieldset ${layer.locked ? 'disabled' : ''} style="border:0;padding:0;margin:0;min-width:0">` + effectTypes.map((type, index) => {
     const definition = effectDefinitions[type], effect = layer.effects.find(e => e.type === type), settings = effect || definition.defaults;
     const fields = definition.fields.map(([key, label, min, max, step]) => min === 'color' ? field(label, `effect:${type}.${key}`, settings[key], 'color') : `<label class="range-field wide"><span>${label}<output>${settings[key]}</output></span><input type="range" data-path="effect:${type}.${key}" min="${min}" max="${max}" step="${step}" value="${settings[key]}" aria-label="${definition.label} ${label}"></label>`).join('');
@@ -36,7 +35,7 @@ export function effectsHTML(layer, opened = new Set()) {
   }).join('') + '</fieldset>';
 }
 export function layersHTML(doc, selected) {
-  if (!doc.layers.length) return '<div class="layer-empty">Add an image, some type, or a shape.</div>';
+  if (!doc.layers.length) return '';
   return [...doc.layers].reverse().map(layer => `<div class="layer-row ${layer.id === selected ? 'selected' : ''} ${layer.visible ? '' : 'hidden-layer'}" data-layer="${layer.id}" draggable="true"><button class="layer-select" data-layer-action="select" aria-pressed="${layer.id === selected}" title="Select ${escapeHTML(layer.name)}"><span class="layer-thumb">${icon(layerIcon(layer))}</span><span class="layer-name">${escapeHTML(layer.name)}</span></button><button data-layer-action="lock" aria-label="${layer.locked ? 'Unlock' : 'Lock'} ${escapeHTML(layer.name)}" title="${layer.locked ? 'Unlock' : 'Lock'} layer">${icon(layer.locked ? 'lock-fill' : 'unlock')}</button><button data-layer-action="visibility" aria-label="${layer.visible ? 'Hide' : 'Show'} ${escapeHTML(layer.name)}" title="${layer.visible ? 'Hide' : 'Show'} layer">${icon(layer.visible ? 'eye' : 'eye-slash')}</button></div>`).join('');
 }
 

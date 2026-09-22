@@ -6,6 +6,7 @@ import { saveProject, loadProject, listProjects } from './storage/projects.js';
 import { DocumentRenderer } from './rendering/renderer.js';
 import { Workspace } from './interaction/workspace.js';
 import { propertiesHTML, effectsHTML, layersHTML, historyHTML, escapeHTML, icon } from './components/panels.js';
+import { setupPanelResizer } from './components/panel-resizer.js';
 
 const $ = selector => document.querySelector(selector);
 let doc = createDocument(), assets = new AssetStore(), selectedId = null, activeTab = 'properties';
@@ -277,4 +278,5 @@ if ('serviceWorker' in navigator && window.isSecureContext) {
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (!$('#update-button').hidden) location.reload(); });
   }).catch(() => toast('Offline installation is unavailable. Editing and local saves still work.', true));
 }
+setupPanelResizer($('#inspector'), $('#layers-resizer'), $('#layers-panel'));
 refresh(); workspace.fit(); $('#new-dialog').showModal();
