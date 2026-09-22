@@ -13,7 +13,6 @@
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="./" aria-label="Dither home"><img src="./icons/app-192.png" alt="" width="27" height="27" /><span>dither</span></a>
       <div class="top-actions" role="toolbar" aria-label="Document actions">
         <button data-action="new" title="New document"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i><span>New</span></button>
         <button data-action="open" title="Open saved project (Ctrl/⌘ O)">
@@ -22,15 +21,12 @@
         <button data-action="save" title="Save locally (Ctrl/⌘ S)"><i class="bi bi-floppy" aria-hidden="true"></i><span>Save</span></button>
       </div>
       <div class="project-heading">
-        <input id="project-name" aria-label="Project name" value="Untitled" maxlength="100" /><span id="save-state">Not saved</span>
+        <input id="project-name" aria-label="Project name" value="Untitled" maxlength="100" />
       </div>
       <div class="history-actions">
         <button data-action="undo" aria-label="Undo" title="Undo (Ctrl/⌘ Z)"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button
         ><button data-action="redo" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
       </div>
-      <button data-action="import" class="import-button" title="Import PNG, JPEG or WebP">
-        <i class="bi bi-image" aria-hidden="true"></i><span>Import image</span>
-      </button>
       <button data-action="export" class="primary"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span>Export PNG</span></button>
       <button data-action="panels" class="panel-toggle" aria-label="Toggle inspector" title="Toggle inspector">
         <i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i>
@@ -50,12 +46,11 @@
         <button data-action="arrow" aria-label="Add arrow" title="Add arrow (A)"><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
         <span class="tool-divider"></span>
         <button data-action="import" aria-label="Import images" title="Import images"><i class="bi bi-image" aria-hidden="true"></i></button>
-        <button data-action="help" class="tool-help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">
+        <button data-action="help" class="tool-help" aria-label="About Dither and shortcuts" title="About Dither and shortcuts">
           <i class="bi bi-question-circle" aria-hidden="true"></i>
         </button>
       </nav>
       <section id="workspace" class="workspace" tabindex="0" aria-label="Canvas workspace. Use arrow keys to move a selected layer.">
-        <div class="workspace-label"><span id="document-label">UNTITLED</span><span id="canvas-size"></span></div>
         <div id="stage" class="stage">
           <canvas id="artwork" aria-label="Document artwork"></canvas
           ><svg id="overlay" xmlns="http://www.w3.org/2000/svg" aria-label="Selection controls"></svg>
@@ -147,9 +142,10 @@
       <div id="project-list"></div>
       <div class="dialog-actions"><button data-close>Close</button></div>
     </dialog>
-    <dialog id="help-dialog" aria-labelledby="help-title">
-      <div class="dialog-brand">A FEW USEFUL SHORTCUTS</div>
-      <h1 id="help-title">Keep your hands on the keys.</h1>
+    <dialog id="help-dialog" aria-label="About Dither and shortcuts">
+      <div class="about-brand"><img src="./icons/app-192.png" alt="" width="40" height="40" /><span>Dither</span></div>
+      <a class="about-link" href="https://github.com/ocodia" target="_blank" rel="noopener noreferrer"><i class="bi bi-github" aria-hidden="true"></i> GitHub · ocodia</a>
+      <h1 id="help-title">Shortcuts</h1>
       <dl class="shortcuts">
         <dt>Undo / Redo</dt>
         <dd>Ctrl/⌘ Z / Shift Z</dd>
@@ -176,7 +172,7 @@
         <dt>Cancel transformation</dt>
         <dd>Escape</dd>
       </dl>
-      <div class="dialog-actions"><button data-close class="primary">Got it</button></div>
+      <div class="dialog-actions"><button data-close class="primary">Close</button></div>
     </dialog>
     <noscript>Dither needs JavaScript enabled to edit images locally.</noscript>
     <script type="module" src="./js/app.js"></script>

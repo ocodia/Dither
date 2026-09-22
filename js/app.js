@@ -40,10 +40,9 @@ function refresh() {
   if (!edit && !activeField) { $('#properties').innerHTML = propertiesHTML(doc, layer, collapsedProperties); $('#effects').innerHTML = effectsHTML(layer, openedEffects); }
   $('#layers').innerHTML = layersHTML(doc, selectedId); $('#layer-count').textContent = doc.layers.length;
   $('#effect-count').textContent = layer?.effects.filter(e => e.enabled).length || 0;
-  $('#document-label').textContent = doc.name.toUpperCase();
-  $('#canvas-size').textContent = `${doc.canvas.width} × ${doc.canvas.height}`; $('#dimensions-status').textContent = `${doc.canvas.width} × ${doc.canvas.height} px`;
+  $('#dimensions-status').textContent = `${doc.canvas.width} × ${doc.canvas.height} px`;
   if (document.activeElement !== $('#project-name')) $('#project-name').value = doc.name;
-  $('#save-state').textContent = saving ? 'Saving…' : history.dirty ? 'Unsaved changes' : hasSaved ? 'Saved on this device' : 'Not saved';
+  updateSaveButton();
   document.title = `${history.dirty ? '• ' : ''}${doc.name} — Dither`;
   $('[data-action=undo]').disabled = !history.undoStack.length; $('[data-action=redo]').disabled = !history.redoStack.length;
   for (const action of ['duplicate', 'delete', 'raise', 'lower']) $(`[data-action=${action}]`).disabled = !layer || layer.locked;
@@ -51,6 +50,15 @@ function refresh() {
   $('#empty-tip').hidden = doc.layers.length > 0; workspace.draw(); requestRender();
 }
 function commandPatch(target, changes, label) { const before = {}; for (const key of Object.keys(changes)) before[key] = clone(target[key]); history.execute(patchCommand(target, before, changes, label)); }
+function updateSaveButton() {
+  const draftChanged = edit && Object.keys(edit.before).some(key => JSON.stringify(edit.before[key]) !== JSON.stringify(edit.target[key]));
+  const nameChanged = ($('#project-name').value.trim() || 'Untitled') !== doc.name;
+  $('[data-action=save]').disabled = saving || (hasSaved && !history.dirty && !draftChanged && !nameChanged);
+}
+function commitProjectName() {
+  const name = $('#project-name').value.trim() || 'Untitled';
+  if (name !== doc.name) commandPatch(doc, { name }, 'Rename project');
+}
 function addLayer(kind) {
   finishEdit(); const layer = createLayer(kind === 'text' ? 'text' : 'shape', doc.canvas);
   if (kind !== 'text') {
@@ -104,7 +112,7 @@ function changeField(control) {
     if (path.startsWith('canvas.')) { try { checkSize(target.canvas.width, target.canvas.height); } catch { object[key] = previous; } }
     if (path === 'transform.width' || path === 'transform.height') { if (target.transform.width * target.transform.height > 32_000_000) { object[key] = previous; toast('Keep layer dimensions below 32 million pixels.', true); } }
   }
-  requestRender(); workspace.draw(); $('#save-state').textContent = 'Unsaved changes';
+  requestRender(); workspace.draw(); updateSaveButton();
 }
 function finishEdit() {
   if (!edit) return;
@@ -119,7 +127,7 @@ function setTab(tab) {
   for (const name of ['properties', 'effects']) { $(`#${name}`).hidden = tab !== name; $(`[data-tab=${name}]`).setAttribute('aria-selected', tab === name); $(`[data-tab=${name}]`).tabIndex = tab === name ? 0 : -1; }
 }
 async function save() {
-  finishEdit(); workspace.finish(); if (saving) return;
+  finishEdit(); workspace.finish(); commitProjectName(); if (saving || (hasSaved && !history.dirty)) return;
   const epoch = documentEpoch, state = history.state, snapshot = clone(doc);
   saving = true; refresh();
   try { await saveProject(snapshot, assets); if (epoch === documentEpoch) { hasSaved = true; history.markSaved(state); } toast('Project saved on this device.'); }
@@ -207,7 +215,8 @@ area.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes(
 area.addEventListener('dragleave', e => { if (!area.contains(e.relatedTarget)) area.classList.remove('drop-active'); });
 area.addEventListener('drop', e => { e.preventDefault(); area.classList.remove('drop-active'); if (e.dataTransfer.files.length) importFiles([...e.dataTransfer.files]); });
 document.addEventListener('paste', e => { if (isTyping(e.target) || document.querySelector('dialog[open]')) return; const files = [...(e.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean); if (files.length) { e.preventDefault(); importFiles(files); } });
-$('#project-name').addEventListener('change', e => { const name = e.target.value.trim() || 'Untitled'; if (name !== doc.name) commandPatch(doc, { name }, 'Rename project'); });
+$('#project-name').addEventListener('input', updateSaveButton);
+$('#project-name').addEventListener('change', commitProjectName);
 const form = $('#new-form');
 form.elements.preset.addEventListener('change', e => { if (e.target.value !== 'custom') [form.elements.width.value, form.elements.height.value] = e.target.value.split(','); });
 for (const key of ['width','height']) form.elements[key].addEventListener('input', () => { form.elements.preset.value = 'custom'; });

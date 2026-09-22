@@ -69,7 +69,8 @@ try {
   await page.locator('#workspace').focus(); await page.keyboard.press('Shift+ArrowRight'); await page.keyboard.press('Control+z'); await page.keyboard.press('Control+Shift+z');
   check('Canvas selection, pointer move/resize/rotation and keyboard nudges');
 
-  await page.locator('[data-action=save]').click(); await page.waitForFunction(()=>document.querySelector('#save-state').textContent==='Saved on this device');
+  await page.locator('[data-action=save]').click(); await page.getByRole('status').filter({hasText:'Project saved on this device.'}).waitFor();
+  assert.ok(await page.locator('[data-action=save]').isDisabled());
   const saved = await page.evaluate(async()=>{const {listProjects}=await import('./js/storage/projects.js');return (await listProjects())[0];});
   assert.equal(saved.layers.length,7); assert.equal(saved.assets.length,2); assert.ok(saved.layers.find(l=>l.type==='text').text.content.includes('DITHER')); assert.equal(saved.layers.find(l=>l.name==='second-image').effects.length,7);
   assert.ok(!JSON.stringify(saved).includes('data:image')); assert.ok(!('_saved' in saved));
