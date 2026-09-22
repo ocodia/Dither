@@ -5,7 +5,7 @@ import { AssetStore } from './storage/assets.js';
 import { saveProject, loadProject, listProjects } from './storage/projects.js';
 import { DocumentRenderer } from './rendering/renderer.js';
 import { Workspace } from './interaction/workspace.js';
-import { propertiesHTML, effectsHTML, layersHTML, escapeHTML, icon } from './components/panels.js';
+import { propertiesHTML, effectsHTML, layersHTML, historyHTML, escapeHTML, icon } from './components/panels.js';
 
 const $ = selector => document.querySelector(selector);
 let doc = createDocument(), assets = new AssetStore(), selectedId = null, activeTab = 'properties';
@@ -40,8 +40,7 @@ function refresh() {
   if (!edit && !activeField) { $('#properties').innerHTML = propertiesHTML(doc, layer, collapsedProperties); $('#effects').innerHTML = effectsHTML(layer, openedEffects); }
   $('#layers').innerHTML = layersHTML(doc, selectedId); $('#layer-count').textContent = doc.layers.length;
   $('#effect-count').textContent = layer?.effects.filter(e => e.enabled).length || 0;
-  $('#dimensions-status').textContent = `${doc.canvas.width} × ${doc.canvas.height} px`;
-  if (document.activeElement !== $('#project-name')) $('#project-name').value = doc.name;
+  $('#history').innerHTML = historyHTML(history, hasSaved);
   updateSaveButton();
   document.title = `${history.dirty ? '• ' : ''}${doc.name} — Dither`;
   $('[data-action=undo]').disabled = !history.undoStack.length; $('[data-action=redo]').disabled = !history.redoStack.length;
@@ -52,12 +51,7 @@ function refresh() {
 function commandPatch(target, changes, label) { const before = {}; for (const key of Object.keys(changes)) before[key] = clone(target[key]); history.execute(patchCommand(target, before, changes, label)); }
 function updateSaveButton() {
   const draftChanged = edit && Object.keys(edit.before).some(key => JSON.stringify(edit.before[key]) !== JSON.stringify(edit.target[key]));
-  const nameChanged = ($('#project-name').value.trim() || 'Untitled') !== doc.name;
-  $('[data-action=save]').disabled = saving || (hasSaved && !history.dirty && !draftChanged && !nameChanged);
-}
-function commitProjectName() {
-  const name = $('#project-name').value.trim() || 'Untitled';
-  if (name !== doc.name) commandPatch(doc, { name }, 'Rename project');
+  $('[data-action=save]').disabled = saving || (hasSaved && !history.dirty && !draftChanged);
 }
 function addLayer(kind) {
   finishEdit(); const layer = createLayer(kind === 'text' ? 'text' : 'shape', doc.canvas);
@@ -117,17 +111,21 @@ function changeField(control) {
 function finishEdit() {
   if (!edit) return;
   const { target, before } = edit; edit = null;
+  if (target === doc) target.name = target.name.trim() || 'Untitled';
   // Store only changed top-level properties, never a full-document history snapshot.
   const a = {}, b = {};
   for (const key of Object.keys(before)) if (JSON.stringify(before[key]) !== JSON.stringify(target[key])) { a[key] = before[key]; b[key] = clone(target[key]); }
-  if (Object.keys(a).length) history.record(patchCommand(target, a, b, 'Edit properties'));
+  if (Object.keys(a).length) {
+    const label = 'name' in b ? target === doc ? 'Rename document' : 'Rename layer' : 'text' in b ? 'Edit text' : 'shape' in b ? 'Edit shape' : 'effects' in b ? 'Change effect' : 'transform' in b ? 'Transform layer' : 'canvas' in b ? 'Canvas settings' : 'opacity' in b ? 'Change opacity' : 'Edit properties';
+    history.record(patchCommand(target, a, b, label));
+  }
 }
 function setTab(tab) {
   finishEdit(); activeTab = tab;
-  for (const name of ['properties', 'effects']) { $(`#${name}`).hidden = tab !== name; $(`[data-tab=${name}]`).setAttribute('aria-selected', tab === name); $(`[data-tab=${name}]`).tabIndex = tab === name ? 0 : -1; }
+  for (const name of ['properties', 'effects', 'history']) { $(`#${name}`).hidden = tab !== name; $(`[data-tab=${name}]`).setAttribute('aria-selected', tab === name); $(`[data-tab=${name}]`).tabIndex = tab === name ? 0 : -1; }
 }
 async function save() {
-  finishEdit(); workspace.finish(); commitProjectName(); if (saving || (hasSaved && !history.dirty)) return;
+  finishEdit(); workspace.finish(); if (saving || (hasSaved && !history.dirty)) return;
   const epoch = documentEpoch, state = history.state, snapshot = clone(doc);
   saving = true; refresh();
   try { await saveProject(snapshot, assets); if (epoch === documentEpoch) { hasSaved = true; history.markSaved(state); } toast('Project saved on this device.'); }
@@ -159,12 +157,13 @@ const actions = {
   raise: () => reorder(1), lower: () => reorder(-1),
   'flip-x': () => flip('flipX'), 'flip-y': () => flip('flipY'),
   'zoom-in': () => workspace.zoomAt(1.2), 'zoom-out': () => workspace.zoomAt(1 / 1.2), 'zoom-reset': () => workspace.zoomAt(1 / workspace.view.zoom), fit: () => workspace.fit(),
+  canvas: () => { selectedId = null; collapsedProperties.delete('canvas'); setTab('properties'); refresh(); $('#inspector').classList.add('mobile-open'); },
   panels: () => { $('#inspector').classList.toggle('mobile-open'); }, help: () => $('#help-dialog').showModal()
 };
 function flip(axis) { const layer = selected(); if (layer && !layer.locked) commandPatch(layer, { transform: { ...layer.transform, [axis]: !layer.transform[axis] } }, 'Flip layer'); }
 function reorder(direction) { const layer = selected(); if (!layer || layer.locked) return; const index = Math.max(0, Math.min(doc.layers.length - 1, doc.layers.indexOf(layer) + direction)); history.execute(orderCommand(doc, layer, index)); }
 document.addEventListener('click', e => {
-  const action = e.target.closest('[data-action]'); if (action) { finishEdit(); Promise.resolve(actions[action.dataset.action]?.()).catch(error => toast(error.message, true)); }
+  const action = e.target.closest('[data-action]'); if (action) { if (action.closest('#document-menu')) $('#document-menu').hidePopover(); finishEdit(); Promise.resolve(actions[action.dataset.action]?.()).catch(error => toast(error.message, true)); }
   const tool = e.target.closest('[data-tool]'); if (tool) setTool(tool.dataset.tool);
   const tab = e.target.closest('[data-tab]'); if (tab) setTab(tab.dataset.tab);
   const close = e.target.closest('[data-close]'); if (close) close.closest('dialog').close();
@@ -177,7 +176,18 @@ document.addEventListener('click', e => {
   }
 });
 function setTool(tool) { workspace.setTool(tool); for (const el of document.querySelectorAll('[data-tool]')) el.setAttribute('aria-pressed', el.dataset.tool === tool); }
-$('.inspector-tabs').addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); const tab = activeTab === 'properties' ? 'effects' : 'properties'; setTab(tab); $(`[data-tab=${tab}]`).focus(); } });
+$('.inspector-tabs').addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); const tabs = ['properties', 'effects', 'history'], tab = tabs[(tabs.indexOf(activeTab) + (e.key === 'ArrowRight' ? 1 : 2)) % tabs.length]; setTab(tab); $(`[data-tab=${tab}]`).focus(); } });
+$('#history').addEventListener('click', e => {
+  const button = e.target.closest('[data-history-state]'); if (!button) return;
+  finishEdit(); workspace.finish(true); const state = Number(button.dataset.historyState);
+  history.goTo(state); $('#history').querySelector(`[data-history-state="${state}"]`)?.focus({ preventScroll: true });
+});
+$('#history').addEventListener('keydown', e => {
+  if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+  e.preventDefault(); const buttons = [...$('#history').querySelectorAll('[data-history-state]')], index = buttons.indexOf(e.target);
+  const next = e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length - 1 : index + (e.key === 'ArrowDown' ? 1 : -1);
+  buttons[Math.max(0, Math.min(buttons.length - 1, next))]?.click();
+});
 for (const id of ['properties', 'effects']) {
   const container = $(`#${id}`);
   container.addEventListener('input', e => { if (e.target.dataset.path) changeField(e.target); });
@@ -215,8 +225,6 @@ area.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes(
 area.addEventListener('dragleave', e => { if (!area.contains(e.relatedTarget)) area.classList.remove('drop-active'); });
 area.addEventListener('drop', e => { e.preventDefault(); area.classList.remove('drop-active'); if (e.dataTransfer.files.length) importFiles([...e.dataTransfer.files]); });
 document.addEventListener('paste', e => { if (isTyping(e.target) || document.querySelector('dialog[open]')) return; const files = [...(e.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean); if (files.length) { e.preventDefault(); importFiles(files); } });
-$('#project-name').addEventListener('input', updateSaveButton);
-$('#project-name').addEventListener('change', commitProjectName);
 const form = $('#new-form');
 form.elements.preset.addEventListener('change', e => { if (e.target.value !== 'custom') [form.elements.width.value, form.elements.height.value] = e.target.value.split(','); });
 for (const key of ['width','height']) form.elements[key].addEventListener('input', () => { form.elements.preset.value = 'custom'; });
@@ -235,7 +243,7 @@ $('#project-list').addEventListener('click', async e => {
 });
 function isTyping(target) { return target instanceof Element && !!target.closest('input, textarea, select, [contenteditable=true]'); }
 document.addEventListener('keydown', e => {
-  if (document.querySelector('dialog[open]')) return;
+  if (e.defaultPrevented || document.querySelector('dialog[open]')) return;
   const modifier = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
   if (modifier && key === 's') { e.preventDefault(); save(); return; }
   if (isTyping(e.target)) return;
@@ -262,7 +270,7 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instal
 $('#install-button').addEventListener('click', async () => { if (!installPrompt) return; await installPrompt.prompt(); installPrompt = null; $('#install-button').hidden = true; });
 if ('serviceWorker' in navigator && window.isSecureContext) {
   navigator.serviceWorker.register('./sw.js', { type: 'module' }).then(registration => {
-    const offerUpdate = () => { if (registration.waiting && navigator.serviceWorker.controller) $('#update-button').hidden = false; };
+    const offerUpdate = () => { if (registration.waiting && navigator.serviceWorker.controller) { $('#update-button').hidden = false; $('.document-menu-toggle').classList.add('has-update'); $('.document-menu-toggle').title = 'Document actions · update available'; } };
     offerUpdate(); registration.addEventListener('updatefound', () => { registration.installing?.addEventListener('statechange', offerUpdate); });
     $('#update-button').addEventListener('click', async () => { if (history.dirty) { toast('Save your changes before applying the update.'); return; } registration.waiting?.postMessage({ type: 'ACTIVATE_UPDATE' }); });
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (!$('#update-button').hidden) location.reload(); });

@@ -34,7 +34,7 @@ export class Workspace {
     e.preventDefault(); this.pointerId = e.pointerId; this.element.setPointerCapture(e.pointerId); this.element.classList.add('dragging');
   }
   move(e) {
-    const p = this.point(e); const status = document.querySelector('#pointer-status'); status.textContent = `X: ${Math.round(p.x)}  Y: ${Math.round(p.y)}`;
+    const p = this.point(e);
     const g = this.gesture; if (!g) return;
     if (g.type === 'pan') { this.view.x = g.view.x + e.clientX - g.start.x; this.view.y = g.view.y + e.clientY - g.start.y; this.draw(); return; }
     const delta = { x: p.x - g.start.x, y: p.y - g.start.y }, t = g.before;

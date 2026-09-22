@@ -116,42 +116,12 @@ textarea {
   min-height: 80px;
   line-height: 1.5;
 }
-.topbar {
-  height: 55px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-.top-actions {
-  display: flex;
-  gap: 1px;
-}
-.top-actions button {
-  font-size: 11px;
-}
-.project-heading {
-  display: flex;
-  flex: 1;
-  min-width: 90px;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 4px;
-}
-.project-heading input {
-  width: min(220px, 100%);
-  text-align: center;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  font-size: 12px;
-}
-.history-actions {
-  display: flex;
-  gap: 1px;
-}
+
+
+
+
+
+
 .editor {
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr) 302px;
@@ -588,25 +558,9 @@ textarea {
 .layer-footer .bi {
   font-size: 12px;
 }
-.statusbar {
-  height: 29px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 25px;
-  border-top: 1px solid var(--line);
-  padding: 0 16px;
-  color: #818b9a;
-  font-size: 10px;
-}
-.statusbar #dimensions-status {
-  margin-left: auto;
-}
-.statusbar button {
-  color: var(--accent);
-  padding: 3px;
-  font-size: 10px;
-}
+
+
+
 .panel-toggle {
   display: none;
 }
@@ -742,27 +696,14 @@ dialog .field-grid label {
   .editor {
     grid-template-columns: 60px minmax(0, 1fr) 320px;
   }
-  .topbar {
-    gap: 20px;
-  }
-  .top-actions button {
-    padding: 8px 13px;
-  }
+  
+  
 }
 @media (max-width: 1050px) {
-  .topbar {
-    gap: 8px;
-    padding: 0 10px;
-  }
-  .top-actions {
-    padding-left: 6px;
-  }
-  .top-actions button span {
-    display: none;
-  }
-  .history-actions {
-    padding-right: 5px;
-  }
+  
+  
+  
+  
   .editor {
     grid-template-columns: 50px minmax(0, 1fr) 280px;
   }
@@ -787,32 +728,17 @@ dialog .field-grid label {
   .panel-toggle {
     display: inline-flex;
   }
-  .topbar {
-    gap: 3px;
-  }
-  .top-actions {
-    border: 0;
-    padding: 0;
-  }
-  .topbar button {
-    padding: 8px 6px;
-  }
-  .project-heading {
-    min-width: 65px;
-  }
-  .history-actions {
-    border: 0;
-    padding: 0;
-  }
+  
+  
+  
+  
+  
   .empty-tip span {
     max-width: 180px;
     text-align: center;
     font-size: 11px;
   }
-  .statusbar {
-    gap: 10px;
-    padding: 0 9px;
-  }
+  
   #pointer-status {
     display: none;
   }
@@ -892,3 +818,5 @@ dialog .field-grid label {
   font-size: 20px;
   margin-top: 28px;
 }
+
+.tools{overflow-y:auto;overflow-x:hidden}.tool-utilities{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:auto;padding-top:8px}.tools .panel-toggle{display:none}.inspector-tabs{gap:16px}.document-menu-toggle{position:relative}.document-menu-toggle.has-update::after{content:"";position:absolute;right:5px;top:5px;width:6px;height:6px;background:var(--accent);border-radius:50%}#document-menu{position:fixed;inset:12px auto auto 64px;margin:0;padding:6px;width:190px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);box-shadow:0 8px 30px #0006}#document-menu button{display:flex;width:100%;justify-content:flex-start;padding:10px;gap:12px}#open-dialog h1{margin:16px 0 18px}#open-dialog .dialog-actions{border-top:0;margin-top:16px}.history-list{list-style:none;margin:0;padding:10px}.history-entry{width:100%;justify-content:flex-start;gap:10px;text-align:left;white-space:normal;margin:2px 0;padding:11px 9px;border:1px solid transparent}.history-entry[aria-current]{background:#2b3952;border-color:#425b86}.history-entry.undone{opacity:.5}.history-marker{color:var(--muted)}.history-label{flex:1;overflow-wrap:anywhere}.history-entry small{font-size:9px;color:var(--accent)}@media(max-width:760px){.tools .panel-toggle{display:inline-flex}#document-menu{left:54px}.inspector{max-width:calc(100vw - 48px)}}

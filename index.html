@@ -12,28 +12,13 @@
     <link rel="stylesheet" href="./css/app.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="top-actions" role="toolbar" aria-label="Document actions">
-        <button data-action="new" title="New document"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i><span>New</span></button>
-        <button data-action="open" title="Open saved project (Ctrl/⌘ O)">
-          <i class="bi bi-folder2-open" aria-hidden="true"></i><span>Open</span>
-        </button>
-        <button data-action="save" title="Save locally (Ctrl/⌘ S)"><i class="bi bi-floppy" aria-hidden="true"></i><span>Save</span></button>
-        <button data-action="export" title="Export as PNG"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span>Export</span></button>
-      </div>
-      <div class="project-heading">
-        <input id="project-name" aria-label="Project name" value="Untitled" maxlength="100" />
-      </div>
-      <div class="history-actions">
-        <button data-action="undo" aria-label="Undo" title="Undo (Ctrl/⌘ Z)"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button
-        ><button data-action="redo" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
-      </div>
-      <button data-action="panels" class="panel-toggle" aria-label="Toggle inspector" title="Toggle inspector">
-        <i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i>
-      </button>
-    </header>
     <main class="editor">
       <nav class="tools" aria-label="Editing tools">
+        <button class="document-menu-toggle" popovertarget="document-menu" aria-label="Document actions" title="Document actions"><i class="bi bi-file-earmark" aria-hidden="true"></i></button>
+        <span class="tool-divider"></span>
+        <button data-action="undo" aria-label="Undo" title="Undo (Ctrl/⌘ Z)"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>
+        <button data-action="redo" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
+        <span class="tool-divider"></span>
         <button data-tool="move" aria-pressed="true" aria-label="Move tool" title="Move (V)"><i class="bi bi-cursor" aria-hidden="true"></i></button>
         <button data-tool="hand" aria-pressed="false" aria-label="Pan tool" title="Pan (H / hold Space)">
           <i class="bi bi-hand-index" aria-hidden="true"></i>
@@ -46,9 +31,13 @@
         <button data-action="arrow" aria-label="Add arrow" title="Add arrow (A)"><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
         <span class="tool-divider"></span>
         <button data-action="import" aria-label="Import images" title="Import images"><i class="bi bi-image" aria-hidden="true"></i></button>
+        <div class="tool-utilities">
+        <button data-action="canvas" aria-label="Canvas properties" title="Canvas properties"><i class="bi bi-bounding-box" aria-hidden="true"></i></button>
+        <button data-action="panels" class="panel-toggle" aria-label="Toggle inspector" title="Toggle inspector"><i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i></button>
         <button data-action="help" class="tool-help" aria-label="About Dither and shortcuts" title="About Dither and shortcuts">
           <i class="bi bi-question-circle" aria-hidden="true"></i>
         </button>
+        </div>
       </nav>
       <section id="workspace" class="workspace" tabindex="0" aria-label="Canvas workspace. Use arrow keys to move a selected layer.">
         <div id="stage" class="stage">
@@ -70,15 +59,17 @@
         </div>
       </section>
       <aside id="inspector" class="inspector" aria-label="Inspector">
-        <div class="inspector-tabs" role="tablist" aria-label="Layer settings">
+        <div class="inspector-tabs" role="tablist" aria-label="Inspector tabs">
           <button id="tab-properties" role="tab" aria-selected="true" aria-controls="properties" data-tab="properties">Properties</button
-          ><button id="tab-effects" role="tab" aria-selected="false" aria-controls="effects" data-tab="effects">
+          ><button id="tab-effects" role="tab" aria-selected="false" aria-controls="effects" data-tab="effects" tabindex="-1">
             Effects <span id="effect-count">0</span>
           </button>
+          <button id="tab-history" role="tab" aria-selected="false" aria-controls="history" data-tab="history" tabindex="-1">History</button>
         </div>
         <div class="settings-scroll">
           <section id="properties" role="tabpanel" aria-labelledby="tab-properties"></section>
           <section id="effects" role="tabpanel" aria-labelledby="tab-effects" hidden></section>
+          <section id="history" role="tabpanel" aria-labelledby="tab-history" hidden></section>
         </div>
         <section class="layers-panel">
           <div class="panel-heading">
@@ -97,10 +88,14 @@
         </section>
       </aside>
     </main>
-    <footer class="statusbar">
-      <span id="pointer-status">Ready to create</span><span id="dimensions-status"></span><button id="install-button" hidden>Install Dither</button
-      ><button id="update-button" hidden>Update available</button>
-    </footer>
+    <div id="document-menu" popover aria-label="Document actions">
+      <button data-action="new"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i>New</button>
+      <button data-action="open" title="Open saved project (Ctrl/⌘ O)"><i class="bi bi-folder2-open" aria-hidden="true"></i>Open</button>
+      <button data-action="save" title="Save locally (Ctrl/⌘ S)"><i class="bi bi-floppy" aria-hidden="true"></i>Save</button>
+      <button data-action="export" title="Export as PNG"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>Export</button>
+      <button id="install-button" hidden><i class="bi bi-download" aria-hidden="true"></i>Install Dither</button>
+      <button id="update-button" hidden><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Update available</button>
+    </div>
     <div id="toast" role="status" aria-live="polite" hidden></div>
     <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
     <dialog id="new-dialog" aria-labelledby="new-title">
@@ -136,9 +131,7 @@
       </form>
     </dialog>
     <dialog id="open-dialog" aria-labelledby="open-title">
-      <div class="dialog-brand">YOUR DEVICE / PROJECTS</div>
-      <h1 id="open-title">Pick up where you left off.</h1>
-      <p>Editable projects saved in this browser.</p>
+      <h1 id="open-title">Open document</h1>
       <div id="project-list"></div>
       <div class="dialog-actions"><button data-close>Close</button></div>
     </dialog>
