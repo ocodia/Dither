@@ -1,0 +1,85 @@
+import { applyEffects, effectPadding, surface } from './effects.js';
+import { rad } from '../interaction/geometry.js';
+
+export function textLines(ctx, text, width, spacing) {
+  const measure = str => ctx.measureText(str).width + Math.max(0, [...str].length - 1) * spacing;
+  const lines = [];
+  for (const paragraph of text.split('\n')) {
+    let line = '';
+    for (const word of paragraph.split(/(\s+)/)) {
+      if (line && measure(line + word) > width) { lines.push(line.trimEnd()); line = ''; }
+      if (!line && !word.trim()) continue;
+      for (const char of word) { if (line && measure(line + char) > width) { lines.push(line); line = ''; } line += char; }
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+function drawText(ctx, layer) {
+  const t = layer.text, { width, height } = layer.transform;
+  ctx.font = `${t.fontStyle} ${t.fontWeight} ${t.fontSize}px "${t.fontFamily.replaceAll('"', '')}"`;
+  ctx.fillStyle = t.colour; ctx.textBaseline = 'top';
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, width, height); ctx.clip();
+  const lines = textLines(ctx, t.content, width, t.letterSpacing);
+  lines.forEach((line, index) => {
+    const chars = [...line], lineWidth = ctx.measureText(line).width + Math.max(0, chars.length - 1) * t.letterSpacing;
+    let x = t.align === 'center' ? (width - lineWidth) / 2 : t.align === 'right' ? width - lineWidth : 0;
+    const y = index * t.fontSize * t.lineHeight;
+    if (t.letterSpacing === 0) ctx.fillText(line, x, y);
+    else for (const char of chars) { ctx.fillText(char, x, y); x += ctx.measureText(char).width + t.letterSpacing; }
+  });
+  ctx.restore();
+}
+function drawShape(ctx, layer) {
+  const s = layer.shape, { width: w, height: h } = layer.transform;
+  ctx.lineWidth = s.strokeWidth; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.fillStyle = s.fill; ctx.strokeStyle = s.stroke;
+  ctx.beginPath();
+  if (s.kind === 'rectangle') ctx.roundRect(0, 0, w, h, Math.min(s.radius, w / 2, h / 2));
+  if (s.kind === 'ellipse') ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+  if (s.kind === 'line' || s.kind === 'arrow') { ctx.moveTo(0, h); ctx.lineTo(w, 0); }
+  else { ctx.globalAlpha = s.fillOpacity; ctx.fill(); }
+  ctx.globalAlpha = s.strokeOpacity; if (s.strokeWidth) ctx.stroke();
+  if (s.kind === 'arrow' && s.strokeWidth) {
+    const angle = Math.atan2(-h, w), size = Math.min(s.arrowSize, Math.hypot(w, h) / 2);
+    const head = (x, y, a) => { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - size * Math.cos(a - Math.PI / 6), y - size * Math.sin(a - Math.PI / 6)); ctx.lineTo(x - size * Math.cos(a + Math.PI / 6), y - size * Math.sin(a + Math.PI / 6)); ctx.closePath(); ctx.fillStyle = s.stroke; ctx.fill(); };
+    if (s.startArrow) head(0, h, angle + Math.PI); if (s.endArrow) head(w, 0, angle);
+  }
+  ctx.globalAlpha = 1;
+}
+export class DocumentRenderer {
+  constructor() { this.cache = new Map(); }
+  clear() { this.cache.clear(); }
+  async renderLayer(layer, assets) {
+    const { width, height } = layer.transform;
+    const key = JSON.stringify([layer.type, layer.assetId, layer.text, layer.shape, width, height, layer.effects]);
+    if (this.cache.get(layer.id)?.key === key) return this.cache.get(layer.id).promise;
+    const promise = (async () => {
+      const padding = effectPadding(layer), canvas = surface(width + padding * 2, height + padding * 2), ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.translate(padding, padding);
+      if (layer.type === 'image') { const image = assets.images.get(layer.assetId); if (!image) throw new Error(`Missing original image for ${layer.name}.`); ctx.drawImage(image, 0, 0, width, height); }
+      if (layer.type === 'text') drawText(ctx, layer);
+      if (layer.type === 'shape') drawShape(ctx, layer);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      return { canvas: await applyEffects(canvas, layer.effects), padding };
+    })();
+    this.cache.set(layer.id, { key, promise });
+    try { return await promise; } catch (error) { if (this.cache.get(layer.id)?.key === key) this.cache.delete(layer.id); throw error; }
+  }
+  async renderDocument(doc, assets, target) {
+    const ids = new Set(doc.layers.map(l => l.id)); for (const id of this.cache.keys()) if (!ids.has(id)) this.cache.delete(id);
+    const rendered = [];
+    for (const layer of doc.layers) if (layer.visible) rendered.push({ layer, rendered: await this.renderLayer(layer, assets) });
+    if (target.width !== doc.canvas.width) target.width = doc.canvas.width;
+    if (target.height !== doc.canvas.height) target.height = doc.canvas.height;
+    const ctx = target.getContext('2d'); ctx.clearRect(0, 0, target.width, target.height);
+    if (doc.canvas.background) { ctx.fillStyle = doc.canvas.background; ctx.fillRect(0, 0, target.width, target.height); }
+    for (const { layer, rendered: { canvas, padding } } of rendered) {
+      const t = layer.transform; ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(rad(t.rotation)); ctx.scale(t.flipX ? -1 : 1, t.flipY ? -1 : 1); ctx.globalAlpha = layer.opacity;
+      ctx.drawImage(canvas, -t.width / 2 - padding, -t.height / 2 - padding); ctx.restore();
+    }
+  }
+  async exportPNG(doc, assets) {
+    const canvas = surface(doc.canvas.width, doc.canvas.height); await this.renderDocument(doc, assets, canvas);
+    return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG export failed. Try a smaller document.')), 'image/png'));
+  }
+}
