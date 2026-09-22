@@ -67,8 +67,8 @@ try {
   check('Editable typography, all four shapes and command undo/redo');
 
   // Drive real pointer gestures, including a rotation and resize at non-100% zoom.
-  await page.locator('.layer-select').first().click();
-  const centre = await page.locator('#overlay g').evaluate(g => {const r=g.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2+10};});
+  await page.locator('.layer-select').filter({hasText:'Rectangle'}).click();
+  const centre = await page.locator('#overlay g').evaluate(g => {const r=g.getBoundingClientRect();return {x:r.x+r.width*.2,y:r.y+r.height*.2};});
   await page.mouse.move(centre.x,centre.y); await page.mouse.down(); await page.mouse.move(centre.x+35,centre.y+22,{steps:8}); await page.mouse.up();
   const handle = page.locator('#overlay [data-handle="1,1"]'); const bounds=await handle.boundingBox();
   await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2); await page.mouse.down(); await page.keyboard.down('Shift'); await page.mouse.move(bounds.x+55,bounds.y+35,{steps:8}); await page.mouse.up(); await page.keyboard.up('Shift');

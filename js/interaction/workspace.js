@@ -1,5 +1,6 @@
 import { clone } from '../model/document.js';
-import { hitTest, resizeTransform } from './geometry.js';
+import { hitTest, resizeTransform, lineEndpoints, moveLineEndpoint } from './geometry.js';
+import { isLineLayer } from '../model/line.js';
 export class Workspace {
   constructor({ element, stage, overlay, getDocument, getSelected, select, preview, commit, beforeGesture, onView }) {
     Object.assign(this, { element, stage, overlay, getDocument, getSelected, select, preview, commit, beforeGesture, onView });
@@ -27,10 +28,10 @@ export class Workspace {
     const point = this.point(e), pan = e.button === 1 || this.space || this.tool === 'hand';
     if (pan) { this.autoFit = false; this.gesture = { type: 'pan', start: { x: e.clientX, y: e.clientY }, view: { ...this.view } }; }
     else {
-      const handle = e.target.closest('[data-handle]'), rotation = e.target.closest('[data-rotate]');
-      if (!handle && !rotation) this.select(hitTest(this.getDocument().layers, point)?.id || null);
+      const handle = e.target.closest('[data-handle]'), rotation = e.target.closest('[data-rotate]'), endpoint = e.target.closest('[data-endpoint]');
+      if (!handle && !rotation && !endpoint) this.select(hitTest(this.getDocument().layers, point, 6 / this.view.zoom)?.id || null);
       const layer = this.getSelected(); if (!layer || layer.locked || !layer.visible) return;
-      this.gesture = { type: rotation ? 'rotate' : handle ? 'resize' : 'move', start: point, layer, before: clone(layer.transform), handle: handle?.dataset.handle.split(',').map(Number) };
+      this.gesture = { type: endpoint ? 'endpoint' : rotation ? 'rotate' : handle ? 'resize' : 'move', endpoint: Number(endpoint?.dataset.endpoint), start: point, layer, before: clone(layer.transform), handle: handle?.dataset.handle.split(',').map(Number) };
     }
     e.preventDefault(); this.pointerId = e.pointerId; this.element.setPointerCapture(e.pointerId); this.element.classList.add('dragging');
   }
@@ -41,6 +42,10 @@ export class Workspace {
     const delta = { x: p.x - g.start.x, y: p.y - g.start.y }, t = g.before;
     if (g.type === 'move') g.layer.transform = { ...t, x: t.x + delta.x, y: t.y + delta.y };
     if (g.type === 'resize') g.layer.transform = resizeTransform(t, g.handle, delta, { shift: e.shiftKey, alt: e.altKey });
+    if (g.type === 'endpoint') {
+      const endpoint = lineEndpoints(t)[g.endpoint];
+      g.layer.transform = moveLineEndpoint(t, g.endpoint, { x: endpoint.x + delta.x, y: endpoint.y + delta.y }, { shift: e.shiftKey });
+    }
     if (g.type === 'rotate') {
       let rotation = t.rotation + (Math.atan2(p.y - t.y, p.x - t.x) - Math.atan2(g.start.y - t.y, g.start.x - t.x)) * 180 / Math.PI;
       if (e.shiftKey) rotation = Math.round(rotation / 15) * 15;
@@ -60,7 +65,10 @@ export class Workspace {
     this.overlay.setAttribute('viewBox', `0 0 ${c.width} ${c.height}`);
     const layer = this.getSelected();
     if (!layer || !layer.visible || layer.locked) this.overlay.innerHTML = '';
-    else {
+    else if (isLineLayer(layer)) {
+      const [start, end] = lineEndpoints(layer.transform);
+      this.overlay.innerHTML = `<g fill="white" stroke="#84abff" stroke-width="${1 / zoom}"><path d="M${start.x} ${start.y}L${end.x} ${end.y}" fill="none" stroke-dasharray="${3 / zoom} ${3 / zoom}"/>${[start, end].map((p, index) => `<circle data-endpoint="${index}" cx="${p.x}" cy="${p.y}" r="${5 / zoom}" style="pointer-events:all;cursor:crosshair"/>`).join('')}</g>`;
+    } else {
       const t = layer.transform, w = t.width, h = t.height, size = 7 / zoom, length = 28 / zoom;
       const handles = [[-1,-1],[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0]];
       const cursors = ['nwse','ns','nesw','ew','nwse','ns','nesw','ew'];

@@ -1,5 +1,6 @@
 import { applyEffects, effectPadding, surface } from './effects.js';
 import { rad } from '../interaction/geometry.js';
+import { isLineLayer, arrowMetrics } from '../model/line.js';
 
 export function textLines(ctx, text, width, spacing) {
   const measure = str => ctx.measureText(str).width + Math.max(0, [...str].length - 1) * spacing;
@@ -32,18 +33,29 @@ function drawText(ctx, layer) {
 }
 function drawShape(ctx, layer) {
   const s = layer.shape, { width: w, height: h } = layer.transform;
+  if (isLineLayer(layer)) {
+    if (!s.strokeWidth) return;
+    const length = Math.hypot(w, h), { start, end, depth, half, headHalf } = arrowMetrics(s, length);
+    // One filled silhouette joins the shaft to each head's base. A rounded shaft
+    // must never run through the triangle and protrude beyond its tip.
+    ctx.save(); ctx.translate(0, h); ctx.rotate(Math.atan2(-h, w));
+    ctx.fillStyle = s.stroke; ctx.globalAlpha = s.strokeOpacity; ctx.beginPath();
+    if (start) { ctx.moveTo(0, 0); ctx.lineTo(depth, -headHalf); ctx.lineTo(depth, -half); }
+    else ctx.moveTo(0, -half);
+    ctx.lineTo(end ? length - depth : length, -half);
+    if (end) { ctx.lineTo(length - depth, -headHalf); ctx.lineTo(length, 0); ctx.lineTo(length - depth, headHalf); ctx.lineTo(length - depth, half); }
+    else ctx.arc(length, 0, half, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(start ? depth : 0, half);
+    if (start) { ctx.lineTo(depth, headHalf); ctx.lineTo(0, 0); }
+    else ctx.arc(0, 0, half, Math.PI / 2, Math.PI * 1.5);
+    ctx.closePath(); ctx.fill(); ctx.restore(); return;
+  }
   ctx.lineWidth = s.strokeWidth; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.fillStyle = s.fill; ctx.strokeStyle = s.stroke;
   ctx.beginPath();
   if (s.kind === 'rectangle') ctx.roundRect(0, 0, w, h, Math.min(s.radius, w / 2, h / 2));
   if (s.kind === 'ellipse') ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-  if (s.kind === 'line' || s.kind === 'arrow') { ctx.moveTo(0, h); ctx.lineTo(w, 0); }
-  else { ctx.globalAlpha = s.fillOpacity; ctx.fill(); }
+  ctx.globalAlpha = s.fillOpacity; ctx.fill();
   ctx.globalAlpha = s.strokeOpacity; if (s.strokeWidth) ctx.stroke();
-  if (s.kind === 'arrow' && s.strokeWidth) {
-    const angle = Math.atan2(-h, w), size = Math.min(s.arrowSize, Math.hypot(w, h) / 2);
-    const head = (x, y, a) => { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - size * Math.cos(a - Math.PI / 6), y - size * Math.sin(a - Math.PI / 6)); ctx.lineTo(x - size * Math.cos(a + Math.PI / 6), y - size * Math.sin(a + Math.PI / 6)); ctx.closePath(); ctx.fillStyle = s.stroke; ctx.fill(); };
-    if (s.startArrow) head(0, h, angle + Math.PI); if (s.endArrow) head(w, 0, angle);
-  }
   ctx.globalAlpha = 1;
 }
 export class DocumentRenderer {

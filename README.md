@@ -33,6 +33,8 @@ The document menu at the top of the left toolbar contains New, Open, Save and Ex
 
 Creation shortcuts (T, R, E, L, A) place objects centred at the cursor in the workspace, accounting for zoom and pan. Toolbar creation, or shortcuts with the cursor outside the workspace, use the canvas centre. Toasts appear at the workspace's bottom right.
 
+Lines and arrows use two endpoint handles instead of a transform box. Drag either handle to change length and direction while keeping the other end fixed; hold Shift to snap direction to 15° increments. Drag the stroke to move the whole object. Each completed gesture is one history entry, and Escape cancels it. Arrow shafts join the bases of the arrowheads without extending past their tips.
+
 Projects belong to the browser profile and origin where they were saved. Clearing that origin's storage removes local projects. PNG exports are flattened images; portable editable project files are a future addition.
 
 ## Architecture and files
@@ -82,6 +84,7 @@ The optional integration suite uses Playwright with an installed Edge browser. P
 $env:DITHER_PLAYWRIGHT_PATH = 'C:/path/to/playwright/index.mjs'
 node tests/browser.mjs
 node tests/editor-ui.mjs
+node tests/line-editing.mjs
 ```
 
 Start the static server first. `DITHER_URL` can target a subdirectory deployment (include the trailing slash); `DITHER_BROWSER` overrides the default `msedge` channel. Each integration run uses a fresh temporary browser profile and writes screenshots and a PNG to `.test-results/`.
@@ -92,7 +95,7 @@ The integration suite exercises image import, native pointer transforms, modifie
 
 - Verified in current desktop Chromium/Edge. Safari, Firefox, touch-only editing and actual operating-system installation still need separate manual coverage.
 - PNG export and monochrome Floyd–Steinberg only. Effect order is stored and honoured but cannot yet be reordered in the UI. Stroke has square joins and outside placement only.
-- One selected layer at a time; selection uses object bounds, including transparent image areas. Text uses installed fonts rather than embedded font files. The initial UI offers six font families.
+- One selected layer at a time; selection uses object bounds, including transparent image areas, except lines/arrows which are selected near their stroke and heads. Text uses installed fonts rather than embedded font files. The initial UI offers six font families.
 - No autosave, portable `.dither` container, project deletion UI, grouping, masks, pixel painting, blend modes or advanced colour management.
 - Large documents can still consume substantial memory. Full-resolution compositing and browser-native blur are main-thread operations. Layer caches currently have no global memory budget; worker errors are surfaced and later processing falls back to the main thread.
 - Assets retained for history remain in session memory. Obsolete IndexedDB assets are not garbage-collected yet; repeated replacement of source images can grow storage. Local saves are not a cross-device backup.
