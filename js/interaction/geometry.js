@@ -1,3 +1,4 @@
+import { tracePath } from '../model/vector.js';
 import { isLineLayer, arrowMetrics } from '../model/line.js';
 
 export const rad = degrees => degrees * Math.PI / 180;
@@ -32,6 +33,13 @@ export function hitTest(layers, point, tolerance = 6, includeLocked = false) {
   return [...layers].reverse().find(layer => {
     if (!layer.visible || (layer.locked && !includeLocked)) return false;
     const p = worldToLocal(point, layer.transform);
+    if (layer.shape?.kind === 'path' && typeof document !== 'undefined') {
+      const ctx = document.createElement('canvas').getContext('2d');
+      ctx.beginPath(); tracePath(ctx,layer.shape,layer.transform.width,layer.transform.height);
+      ctx.lineWidth = layer.shape.strokeWidth + tolerance*2;
+      const x=p.x+layer.transform.width/2,y=p.y+layer.transform.height/2;
+      return (layer.shape.closed && layer.shape.fillOpacity>0 && ctx.isPointInPath(x,y,'evenodd')) || (layer.shape.strokeWidth>0 && ctx.isPointInStroke(x,y));
+    }
     if (isLineLayer(layer)) {
       const { width: w, height: h } = layer.transform, length = Math.hypot(w, h);
       const dx = p.x + w / 2, dy = p.y - h / 2;

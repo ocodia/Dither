@@ -1,3 +1,4 @@
+import { ToolController } from './interaction/tools.js';
 import { createDocument, createLayer, clone, uid, checkSize } from './model/document.js';
 import { createEffect, effectDefinitions, setEffect } from './model/effects.js';
 import { History, patchCommand, insertCommand, deleteCommand, orderCommand } from './history/history.js';
@@ -35,6 +36,14 @@ const pixelSelection = new PixelSelection(workspace, {
   onChange: updatePixelUI, notify: toast
 });
 workspace.pixelSelection = pixelSelection;
+const toolController = new ToolController(workspace, {
+  controls: $('#tool-options'), selection: pixelSelection, renderer,
+  getDocument: () => doc, getAssets: () => assets, getLayer: selected,
+  select: id => { selectedId = id; refresh(); }, beforeGesture: finishEdit,
+  patch: commandPatch, preview: requestRender, notify: toast, rasterise,
+  insert: layer => { const index = selected() ? doc.layers.indexOf(selected()) + 1 : doc.layers.length; selectedId = layer.id; history.execute(insertCommand(doc, layer, index)); },
+});
+workspace.tools = toolController;
 function updatePixelUI() {
   const hasRegion = !!pixelSelection.current(), drawing = !!pixelSelection.draft;
   $('#pixel-actions').hidden = !hasRegion && !isSelectionTool(workspace.tool) && !pixelClipboard;
@@ -95,6 +104,7 @@ async function render() {
   frame = 0; if (rendering || !renderNeeded) return;
   rendering = true; renderNeeded = false;
   const epoch = documentEpoch, snapshot = clone(doc), originalAssets = assets;
+  if (toolController.gesture?.isNew) snapshot.layers.splice(selected() ? doc.layers.indexOf(selected()) + 1 : snapshot.layers.length, 0, clone(toolController.gesture.layer));
   const timer = setTimeout(() => { $('#processing').hidden = false; }, 160);
   try {
     // Render offscreen so an asynchronous effect never partially replaces the visible scene.
@@ -105,6 +115,8 @@ async function render() {
 }
 function refresh() {
   contextMenu.close(false);
+  toolController.sync();
+  collectAssets();
   if (!doc.layers.some(l => l.id === selectedId)) selectedId = null;
   pixelSelection.sync(); updatePixelUI();
   const layer = selected();
@@ -122,6 +134,9 @@ function refresh() {
   for (const action of ['duplicate', 'delete', 'raise', 'lower']) $(`[data-action=${action}]`).disabled = !layer || layer.locked;
   if (layer) { $('[data-action=raise]').disabled ||= doc.layers.indexOf(layer) === doc.layers.length - 1; $('[data-action=lower]').disabled ||= doc.layers.indexOf(layer) === 0; }
   workspace.draw(); requestRender();
+}
+function collectAssets() {
+  assets.collect(doc, history);
 }
 function commandPatch(target, changes, label) { const before = {}; for (const key of Object.keys(changes)) before[key] = clone(target[key]); history.execute(patchCommand(target, before, changes, label)); }
 function updateSaveButton() {
@@ -172,7 +187,7 @@ async function rasterise() {
     const image = { ...snapshot, type: 'image', assetId: meta.id, transform, effects: [] };
     delete image.shape; delete image.text;
     document.assets.push(meta);
-    history.execute({ label: `Rasterise ${source.name}`,
+    history.execute({ label: `Rasterise ${source.name}`, assetIds: [meta.id],
       redo: () => document.layers.splice(document.layers.indexOf(source), 1, image),
       undo: () => document.layers.splice(document.layers.indexOf(image), 1, source) });
     inserted = true;
@@ -183,14 +198,16 @@ async function rasterise() {
     rasterising = false; refresh();
   }
 }
-function canDiscard() { finishEdit(); workspace.finish(); return !history.dirty || window.confirm('Discard unsaved changes to this document? Save first to keep an editable copy.'); }
+function canDiscard() { toolController.cancel(); finishEdit(); workspace.finish(); return !history.dirty || window.confirm('Discard unsaved changes to this document? Save first to keep an editable copy.'); }
 function replaceDocument(nextDoc, nextAssets, saved = false) {
   contextMenu.close(false);
+  toolController.cancel();
   pixelSelection.clear();
   workspace.finish(true); documentEpoch++; assets.dispose(); assets = nextAssets; doc = nextDoc; hasSaved = saved;
   selectedId = null; edit = null; history.reset(); renderer.clear(); refresh(); workspace.fit();
 }
 function startEdit(control) {
+  toolController.cancel();
   if (edit?.control === control) return; finishEdit();
   const target = selected() || doc;
   edit = { control, target, before: clone(target) };
@@ -232,7 +249,7 @@ function setTab(tab) {
   for (const name of ['properties', 'effects', 'history']) { $(`#${name}`).hidden = tab !== name; $(`[data-tab=${name}]`).setAttribute('aria-selected', tab === name); $(`[data-tab=${name}]`).tabIndex = tab === name ? 0 : -1; }
 }
 async function save() {
-  finishEdit(); workspace.finish(); if (saving || (hasSaved && !history.dirty)) return;
+  toolController.cancel(); finishEdit(); workspace.finish(); if (saving || (hasSaved && !history.dirty)) return;
   const epoch = documentEpoch, state = history.state, snapshot = clone(doc);
   saving = true; refresh();
   try { await saveProject(snapshot, assets); if (epoch === documentEpoch) { hasSaved = true; history.markSaved(state); } toast('Project saved on this device.'); }
@@ -247,7 +264,7 @@ async function openPicker() {
   } catch (error) { toast(error.message, true); }
 }
 async function exportPNG() {
-  finishEdit(); workspace.finish(); if (exporting) return;
+  toolController.cancel(); finishEdit(); workspace.finish(); if (exporting) return;
   exporting = true; const button = $('[data-action=export]'); button.disabled = true;
   try {
     const snapshot = clone(doc), blob = await renderer.exportPNG(snapshot, assets), url = URL.createObjectURL(blob), a = document.createElement('a');
@@ -257,6 +274,7 @@ async function exportPNG() {
 }
 const actions = {
   new: () => { finishEdit(); $('#new-error').textContent = ''; $('#new-dialog').showModal(); }, open: openPicker, save, export: exportPNG,
+  'new-layer': () => toolController.newPaint(),
   import: () => $('#image-input').click(), undo: () => { workspace.finish(true); history.undo(); }, redo: () => history.redo(),
   text: (atPointer = false) => addLayer('text', atPointer), rectangle: (atPointer = false) => addLayer('rectangle', atPointer), ellipse: (atPointer = false) => addLayer('ellipse', atPointer), line: (atPointer = false) => addLayer('line', atPointer), arrow: (atPointer = false) => addLayer('arrow', atPointer),
   duplicate: () => { const source = selected(); if (!source || source.locked) return; const layer = clone(source); layer.id = uid(); layer.name += ' copy'; layer.transform.x += 20; layer.transform.y += 20; layer.effects.forEach(e => { e.id = uid(); }); selectedId = layer.id; history.execute(insertCommand(doc, layer, doc.layers.indexOf(source) + 1)); },
@@ -267,8 +285,9 @@ const actions = {
   canvas: () => { selectedId = null; collapsedProperties.delete('canvas'); setTab('properties'); refresh(); $('#inspector').classList.add('mobile-open'); },
   panels: () => { $('#inspector').classList.toggle('mobile-open'); }, help: () => $('#help-dialog').showModal()
 };
+for (const [name, action] of Object.entries(actions)) actions[name] = (...args) => { toolController.cancel(); return action(...args); };
 async function copyLayer() {
-  finishEdit(); workspace.finish();
+  toolController.cancel(); finishEdit(); workspace.finish();
   const layer = selected(); if (!layer) return;
   layerClipboard = { layer: clone(layer), epoch: documentEpoch, token: `Dither layer ${uid()}`,
     blob: layer.type === 'image' ? assets.blobs.get(layer.assetId) : null };
@@ -284,7 +303,7 @@ async function pasteLayer() {
   const layer = clone(clipboard.layer);
   layerPasting = true;
   try {
-    if (layer.type === 'image' && clipboard.epoch !== epoch) {
+    if (layer.type === 'image' && (clipboard.epoch !== epoch || !destination.blobs.has(layer.assetId))) {
       const meta = await destination.add(clipboard.blob);
       if (epoch !== documentEpoch) return;
       doc.assets.push(meta); layer.assetId = meta.id;
@@ -340,8 +359,8 @@ function flip(axis) { const layer = selected(); if (layer && !layer.locked) comm
 function reorder(direction) { const layer = selected(); if (!layer || layer.locked) return; const index = Math.max(0, Math.min(doc.layers.length - 1, doc.layers.indexOf(layer) + direction)); history.execute(orderCommand(doc, layer, index)); }
 document.addEventListener('click', e => {
   const pixelAction = e.target.closest('[data-pixel-action]')?.dataset.pixelAction;
-  if (pixelAction) ({ copy: () => copyPixels(), cut: () => copyPixels(true), paste: pastePixels, delete: deletePixels, deselect: () => pixelSelection.clear(), all: () => pixelSelection.selectAll() })[pixelAction]?.();
-  const action = e.target.closest('[data-action]'); if (action) { if (action.closest('#document-menu')) $('#document-menu').hidePopover(); finishEdit(); Promise.resolve(actions[action.dataset.action]?.()).catch(error => toast(error.message, true)); }
+  if (pixelAction) { toolController.cancel(); ({ copy: () => copyPixels(), cut: () => copyPixels(true), paste: pastePixels, delete: deletePixels, deselect: () => pixelSelection.clear(), all: () => pixelSelection.selectAll() })[pixelAction]?.(); }
+  const action = e.target.closest('[data-action]'); if (action) { toolController.cancel(); if (action.closest('#document-menu')) $('#document-menu').hidePopover(); finishEdit(); Promise.resolve(actions[action.dataset.action]?.()).catch(error => toast(error.message, true)); }
   const tool = e.target.closest('[data-tool]'); if (tool) setTool(tool.dataset.tool);
   const tab = e.target.closest('[data-tab]'); if (tab) setTab(tab.dataset.tab);
   const close = e.target.closest('[data-close]'); if (close) close.closest('dialog').close();
@@ -353,11 +372,43 @@ document.addEventListener('click', e => {
     commandPatch(layer, { effects }, 'Reset effect');
   }
 });
-function setTool(tool) { workspace.setTool(tool); updatePixelUI(); for (const el of document.querySelectorAll('[data-tool]')) el.setAttribute('aria-pressed', el.dataset.tool === tool); }
+function setTool(tool) {
+  workspace.setTool(tool); toolController.renderControls(); updatePixelUI();
+  for (const el of document.querySelectorAll('[data-tool]')) el.setAttribute('aria-pressed', el.dataset.tool === tool);
+  const toggle = $('#selection-tool-toggle'), option = $(`#selection-tool-menu [data-tool="${tool}"]`);
+  toggle.setAttribute('aria-pressed', String(isSelectionTool(tool)));
+  if (option) {
+    toggle.dataset.selectedTool = tool;
+    toggle.querySelector('use').setAttribute('href', `./icons/ui.svg#${option.dataset.icon}`);
+    toggle.title = `${option.dataset.label} (${option.dataset.shortcut}) - Selection tools`;
+    toggle.setAttribute('aria-label', `Selection tools: ${option.dataset.label}`);
+  }
+  const menu = $('#selection-tool-menu');
+  if (menu.matches(':popover-open')) { menu.hidePopover(); toggle.focus({preventScroll:true}); }
+}
+function positionSelectionMenu() {
+  const menu = $('#selection-tool-menu'), rect = $('#selection-tool-toggle').getBoundingClientRect();
+  menu.style.left = `${Math.max(8, Math.min(rect.right + 8, innerWidth - menu.offsetWidth - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(rect.top, innerHeight - menu.offsetHeight - 8))}px`;
+}
+$('#selection-tool-menu').addEventListener('toggle', e => {
+  $('#selection-tool-toggle').setAttribute('aria-expanded', String(e.newState === 'open'));
+  if (e.newState === 'open') { positionSelectionMenu(); const tool = $('#selection-tool-toggle').dataset.selectedTool || 'marquee-rect'; $(`#selection-tool-menu [data-tool="${tool}"]`).focus({preventScroll:true}); }
+});
+$('#selection-tool-menu').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); $('#selection-tool-menu').hidePopover(); $('#selection-tool-toggle').focus(); return; }
+  if (!['ArrowDown','ArrowUp','Home','End'].includes(e.key)) return;
+  e.preventDefault(); e.stopPropagation();
+  const buttons = [...$('#selection-tool-menu').querySelectorAll('button')], index = buttons.indexOf(document.activeElement);
+  buttons[e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length-1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus();
+});
+window.addEventListener('resize', () => { if ($('#selection-tool-menu').matches(':popover-open')) positionSelectionMenu(); });
+$('.tools').addEventListener('scroll', () => { if ($('#selection-tool-menu').matches(':popover-open')) positionSelectionMenu(); });
+
 $('.inspector-tabs').addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); const tabs = ['properties', 'effects', 'history'], tab = tabs[(tabs.indexOf(activeTab) + (e.key === 'ArrowRight' ? 1 : 2)) % tabs.length]; setTab(tab); $(`[data-tab=${tab}]`).focus(); } });
 $('#history').addEventListener('click', e => {
   const button = e.target.closest('[data-history-state]'); if (!button) return;
-  finishEdit(); workspace.finish(true); const state = Number(button.dataset.historyState);
+  toolController.cancel(); finishEdit(); workspace.finish(true); const state = Number(button.dataset.historyState);
   history.goTo(state); $('#history').querySelector(`[data-history-state="${state}"]`)?.focus({ preventScroll: true });
 });
 $('#history').addEventListener('keydown', e => {
@@ -386,6 +437,7 @@ $('#properties').addEventListener('toggle', e => {
   if (section && e.target.isConnected) e.target.open ? collapsedProperties.delete(section) : collapsedProperties.add(section);
 }, true);
 $('#layers').addEventListener('click', e => {
+  toolController.cancel();
   const button = e.target.closest('[data-layer-action]'), row = button?.closest('[data-layer]'); if (!row) return;
   finishEdit(); const layer = doc.layers.find(l => l.id === row.dataset.layer);
   if (button.dataset.layerAction === 'select') { selectedId = layer.id; refresh(); }
@@ -431,10 +483,16 @@ $('#project-list').addEventListener('click', async e => {
 function isTyping(target) { return target instanceof Element && !!target.closest('input, textarea, select, [contenteditable=true]'); }
 document.addEventListener('keydown', e => {
   if (e.defaultPrevented || document.querySelector('dialog[open]')) return;
+  if (e.key === 'Escape' && $('#selection-tool-menu').matches(':popover-open')) { e.preventDefault(); $('#selection-tool-menu').hidePopover(); $('#selection-tool-toggle').focus(); return; }
   const modifier = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
   if (modifier && key === 's') { e.preventDefault(); save(); return; }
   if (isTyping(e.target)) return;
+  if (toolController.key(e)) return;
   if (pixelSelection.key(e)) return;
+  if (!modifier && !e.altKey && ({i:'eyedropper',b:'brush',f:'fill',p:'pen',g:'gradient'}[key] || key === 'e' && e.shiftKey)) {
+    e.preventDefault(); setTool(key === 'e' ? 'eraser' : {i:'eyedropper',b:'brush',f:'fill',p:'pen',g:'gradient'}[key]); return;
+  }
+  if (modifier && ['z','y'].includes(key)) toolController.cancel();
   if (key === 'escape') { workspace.finish(true); selectedId = null; refresh(); return; }
   if (e.code === 'Space') { e.preventDefault(); workspace.space = true; }
   if (modifier) {
@@ -446,6 +504,7 @@ document.addEventListener('keydown', e => {
     if (action) { e.preventDefault(); finishEdit(); actions[action](); } return;
   }
   if (key.startsWith('arrow')) {
+    toolController.cancel();
     const layer = selected(); if (!layer || layer.locked) return; e.preventDefault(); const delta = e.shiftKey ? 10 : 1, t = clone(layer.transform);
     if (key === 'arrowleft') t.x -= delta; if (key === 'arrowright') t.x += delta; if (key === 'arrowup') t.y -= delta; if (key === 'arrowdown') t.y += delta;
     commandPatch(layer, { transform: t }, 'Nudge layer'); return;
@@ -456,7 +515,7 @@ document.addEventListener('keydown', e => {
   if (!e.repeat && !e.altKey && { t: 'text', r: 'rectangle', e: 'ellipse', l: 'line', a: 'arrow' }[key]) actions[{ t: 'text', r: 'rectangle', e: 'ellipse', l: 'line', a: 'arrow' }[key]](true);
 });
 document.addEventListener('keyup', e => { if (e.code === 'Space') workspace.space = false; });
-window.addEventListener('blur', () => { pixelSelection.cancelDraft(); workspace.space = false; workspace.finish(true); finishEdit(); });
+window.addEventListener('blur', () => { toolController.cancel(); pixelSelection.cancelDraft(); workspace.space = false; workspace.finish(true); finishEdit(); });
 window.addEventListener('beforeunload', e => { finishEdit(); if (history.dirty) { e.preventDefault(); e.returnValue = ''; } });
 let installPrompt;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; $('#install-button').hidden = false; });

@@ -5,13 +5,7 @@ export class PixelSelection {
   constructor(workspace, { getDocument, getLayer, select, beforeGesture, onChange, notify }) {
     Object.assign(this, { workspace, getDocument, getLayer, select, beforeGesture, onChange, notify });
     this.value = null; this.draft = null; this.closedAt = 0;
-    const area = workspace.element;
-    area.addEventListener('pointerdown', e => this.down(e), true);
-    area.addEventListener('pointermove', e => this.move(e), true);
-    area.addEventListener('pointerup', e => { if (this.draft?.pointerId === e.pointerId) { e.stopImmediatePropagation(); this.complete(); } }, true);
-    area.addEventListener('pointercancel', () => this.cancelDraft(), true);
-    area.addEventListener('lostpointercapture', () => { if (this.draft?.kind !== 'polygon-lasso') this.cancelDraft(); }, true);
-    area.addEventListener('dblclick', e => { if (this.draft?.kind === 'polygon-lasso') { e.preventDefault(); e.stopImmediatePropagation(); this.complete(); } }, true);
+
   }
   eligible(layer = this.getLayer()) { return layer?.type === 'image' && layer.visible && !layer.locked; }
   current() { return this.eligible() && this.value?.layerId === this.getLayer().id ? this.value : null; }

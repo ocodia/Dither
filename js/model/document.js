@@ -1,6 +1,7 @@
+import { validPath, validGradient, canGradient } from './vector.js';
 import { validRegion } from './pixel-region.js';
 
-export const VERSION = 1;
+export const VERSION = 2;
 export const uid = () => crypto.randomUUID();
 export const clone = value => structuredClone(value);
 export const MAX_EDGE = 8192;
@@ -25,6 +26,11 @@ export function createLayer(type, canvas, options = {}) {
   return Object.assign(layer, options);
 }
 
+export function migrateDocument(value) {
+  const doc = clone(value);
+  if (doc?.version === 1) doc.version = VERSION;
+  return validateDocument(doc);
+}
 export function validateDocument(doc) {
   if (!doc || doc.version !== VERSION) throw new Error('This project version is not supported by this version of Dither.');
   checkSize(doc.canvas?.width, doc.canvas?.height);
@@ -48,9 +54,11 @@ export function validateDocument(doc) {
       const p = layer.text;
       if (!p || typeof p.content !== 'string' || typeof p.fontFamily !== 'string' || !finite(p.fontSize, 1, 600) || !['400','500','700','900'].includes(p.fontWeight) || !['normal','italic'].includes(p.fontStyle) || !['left','center','right'].includes(p.align) || !colour(p.colour) || !finite(p.lineHeight,.5,4) || !finite(p.letterSpacing,-10,50)) throw new Error('Invalid text layer.');
     }
-    if (layer.type === 'shape' && !['rectangle', 'ellipse', 'line', 'arrow'].includes(layer.shape?.kind)) throw new Error('Invalid shape layer.');
+    if (layer.type === 'shape' && !['rectangle', 'ellipse', 'line', 'arrow', 'path'].includes(layer.shape?.kind)) throw new Error('Invalid shape layer.');
     if (layer.type === 'shape') {
       const s = layer.shape;
+      if (s.kind === 'path' && !validPath(s)) throw new Error('Invalid path anchors.');
+      if (s.gradient !== undefined && (!canGradient(layer) || !validGradient(s.gradient))) throw new Error('Invalid gradient fill.');
       if (!colour(s.fill) || !colour(s.stroke) || !finite(s.fillOpacity,0,1) || !finite(s.strokeOpacity,0,1) || !finite(s.strokeWidth,0,100) || !finite(s.radius,0,1000) || !finite(s.arrowSize,1,200) || typeof s.startArrow !== 'boolean' || typeof s.endArrow !== 'boolean') throw new Error('Invalid shape style.');
     }
     const effectIds = new Set();

@@ -1,6 +1,6 @@
 const ROOT = new URL('./', import.meta.url);
 const CACHE_PREFIX = `dither-shell-${encodeURIComponent(ROOT.pathname)}-`;
-const CACHE = `${CACHE_PREFIX}v23`;
+const CACHE = `${CACHE_PREFIX}v25`;
 const FILES = [
   './', 'index.html', 'css/app.css', 'css/fonts.css', 'manifest.webmanifest',
   'icons/app-icon.svg', 'icons/app-192.png', 'icons/app-512.png', 'icons/app-maskable-512.png',
@@ -26,6 +26,7 @@ const FILES = [
   'fonts/Noto Emoji/NotoEmoji-Regular.ttf',
   'fonts/Noto Emoji/NotoEmoji-Medium.ttf',
   'fonts/Noto Emoji/NotoEmoji-Bold.ttf',
+  'js/interaction/tools.js', 'js/model/vector.js', 'js/rendering/paint.js', 'js/rendering/flood-fill.js', 'js/rendering/fill-worker.js',
   'js/app.js', 'js/model/document.js', 'js/model/effects.js', 'js/model/line.js',
   'js/model/pixel-region.js', 'js/interaction/pixel-selection.js', 'js/rendering/image-pixels.js',
   'js/history/history.js', 'js/storage/assets.js', 'js/storage/projects.js',

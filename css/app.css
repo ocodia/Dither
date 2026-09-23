@@ -994,3 +994,30 @@ dialog .field-grid label {
 #selection-hint:empty {
   display: none;
 }
+
+/* Drawing tools remain available on short and narrow workspaces. */
+.tools { overflow-y: auto; min-height: 0; }
+.tools > button, .tools > .tool-divider { flex-shrink: 0; }
+#tool-options { position: absolute; z-index: 5; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #242830f2; max-height: 35%; overflow: auto; font-size: 12px; cursor: default; }
+#tool-options[hidden] { display: none; }
+#tool-options label { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; white-space: nowrap; color: var(--muted); }
+#tool-options input[type=number] { width: 68px; height: 30px; padding: 4px 6px; }
+#tool-options input[type=color] { width: 34px; height: 30px; padding: 2px; }
+#tool-options select { width: auto; height: 30px; padding: 4px 22px 4px 6px; }
+#tool-options input[type=range] { width: 88px; min-width: 60px; padding: 0; accent-color: var(--accent); cursor: pointer; }
+#tool-options output { min-width: 32px; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+#tool-options button { min-height: 30px; padding: 4px 8px; border: 1px solid #505864; background: #353c46; box-shadow: 0 1px 2px #0003; }
+#tool-options button:hover:not(:disabled) { background: #454f5d; border-color: var(--accent); }
+#tool-options button:active:not(:disabled) { background: #25364e; }
+#tool-options button .icon { font-size: 16px; }
+#tool-options strong { margin-right: 2px; }
+#selection-tool-toggle { position: relative; }
+#selection-tool-toggle .tool-menu-caret { position: absolute; width: 10px; height: 10px; right: 1px; bottom: 1px; }
+#selection-tool-menu { position: fixed; inset: auto; margin: 0; padding: 6px; width: 265px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); box-shadow: 0 8px 30px #0006; }
+#selection-tool-menu button { display: flex; width: 100%; justify-content: flex-start; padding: 10px; gap: 10px; }
+#selection-tool-menu button[aria-pressed=true] { background: #86acff20; color: var(--accent); border-color: #86acff55; }
+#selection-tool-menu kbd { margin-left: auto; color: var(--muted); font: inherit; font-size: 11px; }
+#layers-panel [data-action=new-layer] { border-color: var(--line); background: #ffffff08; padding: 4px 6px; gap: 4px; }
+#layers-panel [data-action=new-layer] .icon { font-size: 16px; }
+
+.workspace.drawing-tool { cursor: crosshair; }

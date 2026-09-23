@@ -3,6 +3,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
 const names = [
+  "image-add", "bezier-curve",
+  "eyedropper", "paint-brush", "eraser-tool", "paint-bucket", "pen", "color-background",
   "add",
   "arrow-down",
   "arrow-download",

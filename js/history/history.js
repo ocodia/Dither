@@ -32,17 +32,17 @@ export class History {
 }
 export function patchCommand(target, before, after, label = 'Change properties') {
   const a = clone(before), b = clone(after);
-  return { label, undo: () => Object.assign(target, clone(a)), redo: () => Object.assign(target, clone(b)) };
+  return { label, assetIds: [target.assetId, a.assetId, b.assetId].filter(Boolean), undo: () => Object.assign(target, clone(a)), redo: () => Object.assign(target, clone(b)) };
 }
 export function insertCommand(doc, layer, index = doc.layers.length) {
-  return { label: `Add ${layer.name || 'layer'}`, redo: () => doc.layers.splice(index, 0, layer), undo: () => doc.layers.splice(doc.layers.indexOf(layer), 1) };
+  return { assetIds: [layer.assetId].filter(Boolean), label: `Add ${layer.name || 'layer'}`, redo: () => doc.layers.splice(index, 0, layer), undo: () => doc.layers.splice(doc.layers.indexOf(layer), 1) };
 }
 export function deleteCommand(doc, layer) {
   const index = doc.layers.indexOf(layer);
-  return { label: `Delete ${layer.name || 'layer'}`, redo: () => doc.layers.splice(doc.layers.indexOf(layer), 1), undo: () => doc.layers.splice(index, 0, layer) };
+  return { assetIds: [layer.assetId].filter(Boolean), label: `Delete ${layer.name || 'layer'}`, redo: () => doc.layers.splice(doc.layers.indexOf(layer), 1), undo: () => doc.layers.splice(index, 0, layer) };
 }
 export function orderCommand(doc, layer, next) {
   const previous = doc.layers.indexOf(layer);
   const move = index => { doc.layers.splice(doc.layers.indexOf(layer), 1); doc.layers.splice(index, 0, layer); };
-  return { label: 'Reorder layer', redo: () => move(next), undo: () => move(previous) };
+  return { assetIds: [layer.assetId].filter(Boolean), label: 'Reorder layer', redo: () => move(next), undo: () => move(previous) };
 }

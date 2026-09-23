@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const {chromium}=await import(process.env.DITHER_PLAYWRIGHT_PATH?pathToFileURL(resolve(process.env.DITHER_PLAYWRIGHT_PATH)).href:'playwright');
+const browser=await chromium.launch({channel:process.env.DITHER_BROWSER||'msedge',headless:true});
+const page=await browser.newPage();
+try{
+  await page.goto(process.env.DITHER_URL||'http://127.0.0.1:4173/');
+  const result=await page.evaluate(async()=>{
+    const {ToolController}=await import('./js/interaction/tools.js');
+    const {createDocument,createLayer,clone}=await import('./js/model/document.js');
+    const {AssetStore}=await import('./js/storage/assets.js');
+    const {DocumentRenderer}=await import('./js/rendering/renderer.js');
+    const {surface}=await import('./js/rendering/effects.js');
+    const {paintSurface,selectionMask,stamp,composeStroke,pngBlob}=await import('./js/rendering/paint.js');
+    const {History,patchCommand}=await import('./js/history/history.js');
+    let doc=createDocument({width:64,height:64});const assets=new AssetStore(),base=surface(64,64);
+    base.getContext('2d').fillStyle='#ff0000';base.getContext('2d').fillRect(0,0,64,64);
+    const meta=await assets.add(await pngBlob(base));doc.assets.push(meta);
+    let layer=createLayer('image',doc.canvas,{assetId:meta.id});Object.assign(layer.transform,{width:64,height:64});doc.layers.push(layer);
+    const duplicate=clone(layer);duplicate.id+='copy';doc.layers.push(duplicate);
+    const original=meta.id,history=new History(),errors=[];
+    const area=document.createElement('div'),controls=document.createElement('div');
+    const workspace={element:area,tool:'brush',draw(){},view:{zoom:1},getDocument:()=>doc};
+    const renderer=new DocumentRenderer();
+    const controller=new ToolController(workspace,{controls,renderer,selection:{current:()=>null},getLayer:()=>layer,getDocument:()=>doc,getAssets:()=>assets,preview(){},notify:m=>errors.push(m),patch:(l,changes,label)=>{const before={};for(const k of Object.keys(changes))before[k]=clone(l[k]);history.execute(patchCommand(l,before,changes,label));}});
+    const g=()=>({type:'brush',layer,snapshot:clone(layer),document:doc,assets,base:paintSurface(layer,assets.images.get(layer.assetId))});
+    const blue=surface(64,64);blue.getContext('2d').fillStyle='#0000ff';blue.getContext('2d').fillRect(0,0,64,64);
+    await controller.commitPaint(g(),blue);const painted=layer.assetId;
+    const independent=painted!==original&&duplicate.assetId===original&&assets.images.has(original);
+    history.undo();const undo=layer.assetId===original;history.redo();const redo=layer.assetId===painted;
+    const count=history.undoStack.length;await controller.commitPaint(g(),blue);const noOp=history.undoStack.length===count;
+    const failed=surface(64,64);failed.toBlob=cb=>cb(null);await controller.commitPaint(g(),failed);
+    const failedAtomic=layer.assetId===painted&&history.undoStack.length===count&&errors.some(e=>e.includes('encode'));
+    const delayed=surface(64,64),encode=delayed.toBlob.bind(delayed);let release;
+    delayed.toBlob=cb=>encode(blob=>{release=()=>cb(blob);});const pending=controller.commitPaint(g(),delayed);
+    while(!release)await new Promise(r=>setTimeout(r,1));const old=doc;doc=createDocument();release();await pending;doc=old;
+    const staleAtomic=layer.assetId===painted&&history.undoStack.length===count;
+    const ink=surface(64,64);stamp(ink.getContext('2d'),{x:32,y:32},40,.5,'#ffffff');
+    const mask=selectionMask([{x:0,y:0},{x:.5,y:0},{x:.5,y:1},{x:0,y:1}],64,64);
+    const erased=composeStroke(base,ink,mask,.5,true),pixels=erased.getContext('2d').getImageData(0,0,64,64).data;
+    const eraseAlpha=pixels[(32*64+30)*4+3],outsideAlpha=pixels[(32*64+40)*4+3],softAlpha=pixels[(32*64+14)*4+3];
+    layer.eraseRegions=[[{x:0,y:0},{x:.5,y:0},{x:.5,y:1},{x:0,y:1}]];
+    const erasedBase=paintSurface(layer,assets.images.get(layer.assetId));const priorErase=erasedBase.getContext('2d').getImageData(10,10,1,1).data[3];await controller.commitPaint(g(),blue);const baked=layer.eraseRegions.length===0;
+    // Exercise the actual worker and commit path on a 12-megapixel image.
+    const large=surface(4000,3000),largeMeta=await assets.add(await pngBlob(large));doc.assets.push(largeMeta);layer.assetId=largeMeta.id;layer.eraseRegions=[];
+    controller.gesture={...g(),settings:{foreground:'#123456',opacity:1,tolerance:0},mask:null};
+    let heartbeat=false;setTimeout(()=>{heartbeat=true;},0);const start=performance.now();await controller.fill({x:0,y:0});
+    const largePixels=paintSurface(layer,assets.images.get(layer.assetId)).getContext('2d').getImageData(3999,2999,1,1).data;
+    const largeMs=Math.round(performance.now()-start);controller.cancel();assets.dispose();
+    return {independent,undo,redo,noOp,failedAtomic,staleAtomic,eraseAlpha,outsideAlpha,softAlpha,priorErase,baked,heartbeat,largePixels:[...largePixels],largeMs};
+  });
+  for(const k of ['independent','undo','redo','noOp','failedAtomic','staleAtomic','baked','heartbeat'])assert.equal(result[k],true,k);
+  assert.equal(result.eraseAlpha,127);assert.equal(result.outsideAlpha,255);assert.ok(result.softAlpha>result.eraseAlpha&&result.softAlpha<255);assert.equal(result.priorErase,0);assert.deepEqual(result.largePixels,[18,52,86,255]);
+  console.log('PASS immutable assets, no-op edits, encoding failure, stale commits, soft erasure and legacy erasure baking');
+  console.log('PASS 12-megapixel worker fill keeps event loop responsive:',result.largeMs,'ms');
+}finally{await browser.close();}

@@ -1,3 +1,4 @@
+import { tracePath, gradientStyle } from '../model/vector.js';
 import { applyEffects, effectPadding, surface } from './effects.js';
 import { rad, localToWorld } from '../interaction/geometry.js';
 import { checkSize } from '../model/document.js';
@@ -53,26 +54,27 @@ function drawShape(ctx, layer) {
     else ctx.arc(0, 0, half, Math.PI / 2, Math.PI * 1.5);
     ctx.closePath(); ctx.fill(); ctx.restore(); return;
   }
-  ctx.lineWidth = s.strokeWidth; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.fillStyle = s.fill; ctx.strokeStyle = s.stroke;
+  ctx.lineWidth = s.strokeWidth; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.fillStyle = s.gradient ? gradientStyle(ctx, s.gradient, w, h) : s.fill; ctx.strokeStyle = s.stroke;
   ctx.beginPath();
   if (s.kind === 'rectangle') ctx.roundRect(0, 0, w, h, Math.min(s.radius, w / 2, h / 2));
+  if (s.kind === 'path') tracePath(ctx, s, w, h);
   if (s.kind === 'ellipse') ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-  ctx.globalAlpha = s.fillOpacity; ctx.fill();
+  ctx.globalAlpha = s.fillOpacity; if (s.kind !== 'path' || s.closed) ctx.fill('evenodd');
   ctx.globalAlpha = s.strokeOpacity; if (s.strokeWidth) ctx.stroke();
   ctx.globalAlpha = 1;
 }
 export class DocumentRenderer {
-  constructor() { this.cache = new Map(); }
+  constructor() { this.cache = new Map(); this.preview = null; }
   clear() { this.cache.clear(); }
   async renderLayer(layer, assets) {
     const { width, height } = layer.transform;
-    const key = JSON.stringify([layer.type, layer.assetId, layer.eraseRegions, layer.text, layer.shape, width, height, layer.effects]);
+    const key = JSON.stringify([layer.type, layer.assetId, this.preview?.layerId === layer.id ? this.preview.revision : null, layer.eraseRegions, layer.text, layer.shape, width, height, layer.effects]);
     if (this.cache.get(layer.id)?.key === key) return this.cache.get(layer.id).promise;
     const promise = (async () => {
       const padding = effectPadding(layer), canvas = surface(width + padding * 2, height + padding * 2), ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.translate(padding, padding);
-      if (layer.type === 'image') { const image = assets.images.get(layer.assetId); if (!image) throw new Error(`Missing original image for ${layer.name}.`); ctx.drawImage(image, 0, 0, width, height); }
-      if (layer.type === 'image') applyErasures(ctx, layer.eraseRegions, width, height);
+      if (layer.type === 'image') { const image = this.preview?.layerId === layer.id ? this.preview.canvas : assets.images.get(layer.assetId); if (!image) throw new Error(`Missing original image for ${layer.name}.`); ctx.drawImage(image, 0, 0, width, height); }
+      if (layer.type === 'image' && this.preview?.layerId !== layer.id) applyErasures(ctx, layer.eraseRegions, width, height);
       if (layer.type === 'text') {
         // Canvas does not wait for web fonts: load before measuring, drawing or caching.
         await document.fonts.load(textFont(layer.text), layer.text.content || ' ');

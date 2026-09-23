@@ -11,5 +11,12 @@ export class AssetStore {
     this.blobs.set(id, blob); this.images.set(id, image);
     return { id, name: blob.name || 'Image', mime: blob.type, width: image.width, height: image.height };
   }
+  remove(id) { this.images.get(id)?.close?.(); this.images.delete(id); this.blobs.delete(id); }
+  collect(document, history) {
+    const used = new Set(document.layers.map(layer => layer.assetId).filter(Boolean));
+    for (const command of [...history.undoStack, ...history.redoStack]) for (const id of command.assetIds || []) used.add(id);
+    for (const id of this.blobs.keys()) if (!used.has(id)) this.remove(id);
+    document.assets = document.assets.filter(asset => used.has(asset.id));
+  }
   dispose() { this.disposed = true; for (const image of this.images.values()) image.close(); this.images.clear(); this.blobs.clear(); }
 }

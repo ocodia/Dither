@@ -17,6 +17,10 @@ export function surface(width, height) {
 }
 export function effectPadding(layer) {
   let padding = layer.shape ? Math.ceil(layer.shape.strokeWidth / 2 + 2) : 2;
+  if (layer.shape?.kind === 'path') {
+    const {width,height}=layer.transform;
+    for(const a of layer.shape.anchors) for(const p of [a,a.in,a.out]) padding=Math.max(padding, Math.ceil(Math.max(-p.x*width,(p.x-1)*width,-p.y*height,(p.y-1)*height)+layer.shape.strokeWidth/2+2));
+  }
   if (layer.shape?.kind === 'arrow') padding += Math.ceil(layer.shape.arrowSize / 2);
   for (const e of layer.effects.filter(e => e.enabled)) {
     if (e.type === 'stroke') padding += e.width;

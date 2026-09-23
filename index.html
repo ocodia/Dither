@@ -26,18 +26,17 @@
           <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#hand-left"></use></svg>
         </button>
         <span class="tool-divider"></span>
-        <button data-tool="marquee-rect" aria-pressed="false" aria-label="Rectangular marquee" title="Rectangular marquee (M)">
-          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#square-hint"></use></svg>
+        <button id="selection-tool-toggle" popovertarget="selection-tool-menu" aria-label="Selection tools: Rectangular marquee" aria-controls="selection-tool-menu" aria-expanded="false" aria-pressed="false" title="Rectangular marquee (M) - Selection tools">
+          <svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#square-hint"></use></svg>
+          <svg class="tool-menu-caret icon" aria-hidden="true"><use href="./icons/ui.svg#chevron-down"></use></svg>
         </button>
-        <button data-tool="marquee-ellipse" aria-pressed="false" aria-label="Elliptical marquee" title="Elliptical marquee (Shift M)">
-          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#circle-hint"></use></svg>
-        </button>
-        <button data-tool="lasso" aria-pressed="false" aria-label="Lasso" title="Lasso (Q)">
-          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#lasso"></use></svg>
-        </button>
-        <button data-tool="polygon-lasso" aria-pressed="false" aria-label="Polygonal lasso" title="Polygonal lasso (Shift Q)">
-          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#pentagon"></use></svg>
-        </button>
+        <span class="tool-divider"></span>
+        <button data-tool="eyedropper" aria-pressed="false" aria-label="Eyedropper tool" title="Eyedropper (I)"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#eyedropper"></use></svg></button>
+        <button data-tool="brush" aria-pressed="false" aria-label="Brush tool" title="Brush (B)"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#paint-brush"></use></svg></button>
+        <button data-tool="eraser" aria-pressed="false" aria-label="Eraser tool" title="Eraser (Shift E)"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#eraser-tool"></use></svg></button>
+        <button data-tool="fill" aria-pressed="false" aria-label="Fill tool" title="Fill (F)"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#paint-bucket"></use></svg></button>
+        <button data-tool="pen" aria-pressed="false" aria-label="Pen tool" title="Pen (P)"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#pen"></use></svg></button>
+        <button data-tool="gradient" aria-pressed="false" aria-label="Gradient tool" title="Gradient (G)"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#color-background"></use></svg></button>
         <span class="tool-divider"></span>
         <button data-action="text" aria-label="Add text" title="Add text (T)">
           <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#text-t"></use></svg>
@@ -70,7 +69,8 @@
           </button>
         </div>
       </nav>
-      <section id="workspace" class="workspace" tabindex="0" aria-label="Canvas workspace. Use arrow keys to move a selected layer.">
+      <section id="workspace" class="workspace" tabindex="0" aria-label="Canvas workspace. Use arrow keys to move a selected layer. Drawing shortcuts: I eyedropper, B brush, Shift E eraser, F fill, P pen, G gradient.">
+        <div id="tool-options" role="region" aria-label="Tool options" hidden></div>
         <div id="stage" class="stage">
           <canvas id="artwork" aria-label="Document artwork"></canvas
           ><svg id="overlay" xmlns="http://www.w3.org/2000/svg" aria-label="Selection controls"></svg>
@@ -135,6 +135,7 @@
           <div class="panel-heading">
             <h2>Layers <span id="layer-count">0</span></h2>
             <div>
+              <button data-action="new-layer" aria-label="New layer" title="New paintable layer"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#image-add"></use></svg><span>New layer</span></button>
               <button data-action="duplicate" aria-label="Duplicate layer" title="Duplicate (Ctrl/⌘ D)">
                 <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#copy"></use></svg></button
               ><button data-action="delete" aria-label="Delete layer" title="Delete layer">
@@ -153,6 +154,12 @@
         </section>
       </aside>
     </main>
+    <div id="selection-tool-menu" popover aria-label="Selection tools">
+      <button data-tool="marquee-rect" aria-pressed="false" data-label="Rectangular marquee" data-shortcut="M" data-icon="square-hint"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#square-hint"></use></svg><span>Rectangular marquee</span><kbd>M</kbd></button>
+      <button data-tool="marquee-ellipse" aria-pressed="false" data-label="Elliptical marquee" data-shortcut="Shift M" data-icon="circle-hint"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#circle-hint"></use></svg><span>Elliptical marquee</span><kbd>Shift M</kbd></button>
+      <button data-tool="lasso" aria-pressed="false" data-label="Lasso" data-shortcut="Q" data-icon="lasso"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#lasso"></use></svg><span>Lasso</span><kbd>Q</kbd></button>
+      <button data-tool="polygon-lasso" aria-pressed="false" data-label="Polygonal lasso" data-shortcut="Shift Q" data-icon="pentagon"><svg class="icon" aria-hidden="true"><use href="./icons/ui.svg#pentagon"></use></svg><span>Polygonal lasso</span><kbd>Shift Q</kbd></button>
+    </div>
     <div id="document-menu" popover aria-label="Document actions">
       <button data-action="new">
         <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#document-add"></use></svg>New
@@ -215,7 +222,10 @@
         ><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#code"></use></svg> GitHub · ocodia</a
       >
       <h1 id="help-title">Shortcuts</h1>
+      <p>Paint on a selected image or choose New layer in Layers. Pen: click anchors, drag curves, Enter to finish or click the first anchor to close. Gradient: drag handles, then edit stops in Tool options. Escape cancels unfinished work.</p>
       <dl class="shortcuts">
+        <dt>Eyedropper / Brush / Eraser</dt><dd>I / B / Shift E</dd>
+        <dt>Fill / Pen / Gradient</dt><dd>F / P / G</dd>
         <dt>Undo / Redo</dt>
         <dd>Ctrl/⌘ Z / Shift Z</dd>
         <dt>Save / Open local project</dt>

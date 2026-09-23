@@ -19,7 +19,8 @@ To deploy on GitHub Pages, publish the directory as static files. All app, icon,
 - Custom documents, common presets, transparent/solid backgrounds, document resizing, zoom, pan and fit.
 - PNG/JPEG/WebP import, multi-file import, image drop and clipboard paste.
 - Rectangular/elliptical marquees and freehand/polygonal lassos on image layers, with undoable pixel deletion, copy, cut and paste as a new image layer.
-- Ordered image, text, rectangle, ellipse, line and arrow layers. Select on canvas or in the layer list; rename, duplicate, delete, reorder, hide, lock and set opacity.
+- Eyedropper, round brush, eraser, connected flood fill, editable Bézier paths and editable linear/radial gradient fills.
+- Ordered image, text, rectangle, ellipse, line, arrow and path layers. Select on canvas or in the layer list; rename, duplicate, delete, reorder, hide, lock and set opacity.
 - Move, eight resize handles, rotation and flips. Shift preserves proportions/snaps rotation; Alt/Option resizes from the centre. Numeric transform controls provide keyboard-accessible alternatives.
 - Editable text content, font, weight/style, colour, alignment, line height, letter spacing and wrapping within a text box. Bundled Inter, Noto Sans and Noto Emoji options work offline; the app UI uses Inter. Older projects using the Noto option now render with Noto Sans.
 - Editable shape fill, stroke and opacity, rectangle corners and configurable arrowheads.
@@ -39,9 +40,19 @@ Lines and arrows use two endpoint handles instead of a transform box. Drag eithe
 
 Select an unlocked, visible image layer, then use **M** for rectangular marquee, **Shift M** for elliptical marquee, **Q** for freehand lasso or **Shift Q** for polygonal lasso. Drag marquees/freehand paths; click polygon vertices and close with Enter, double-click or a click on the starting point. Backspace removes a polygon vertex; Escape cancels an unfinished selection or clears a completed one. Hold Space to pan.
 
-The selection toolbar provides Select All, Copy, Cut, Paste, Delete and Deselect. Ctrl/⌘ A selects the whole image; C/X/V copy/cut/paste; D clears an active pixel selection (otherwise it duplicates the layer). Delete/Backspace erases selected pixels; the Layers trash button still deletes the whole layer. Text fields retain their normal editing shortcuts. Selections follow the source layer's transforms and clear when another layer is selected, locked or hidden.
+The selection tools are grouped in a toolbar menu; its icon follows the chosen marquee or lasso, including keyboard shortcut changes. The selection toolbar provides Select All, Copy, Cut, Paste, Delete and Deselect. Ctrl/⌘ A selects the whole image; C/X/V copy/cut/paste; D clears an active pixel selection (otherwise it duplicates the layer). Delete/Backspace erases selected pixels; the Layers trash button still deletes the whole layer. Text fields retain their normal editing shortcuts. Selections follow the source layer's transforms and clear when another layer is selected, locked or hidden.
 
 Copies use original image resolution with existing erased areas and transparent edges preserved. Pasting creates an independent image layer at the copied region's position, with the source transform, opacity and editable effects; pasting into a different document centres it. The operating-system clipboard receives the source pixels before effects, so pasting into another application does not include Dither effects. A session-local clipboard and Paste button remain available if browser clipboard permission is denied. Active selection outlines and clipboard contents are not saved; erased areas are saved.
+
+Drawing tools use **I** (Eyedropper), **B** (Brush), **Shift E** (Eraser), **F** (Fill), **P** (Pen) and **G** (Gradient); **E** still creates an ellipse. The contextual options bar contains foreground/background colours and the active tool's controls. Eyedropper samples the visible composite, including effects and background; transparent samples leave the current colour unchanged.
+
+Brush, eraser and fill edit the selected visible, unlocked image at its original resolution before layer effects. Use **New layer** in the Layers panel (or **New paint layer** in Tool options) for a blank transparent canvas-sized image, or explicitly **Rasterise** text/shapes. Brush/eraser support size in source pixels, hardness and opacity; fill uses four-connected pixels and a 0–255 premultiplied-RGBA tolerance. Active pixel selections clip painting. Each edit creates an independent immutable PNG asset, so duplicates remain unchanged. Existing erasures are baked into the new pixels; painting can restore colour over them. Painting is limited to 8192 pixels per source edge and 32 million source pixels. Pressure dynamics are not included.
+
+With Pen, click anchors and drag for curves. Click the first point to close a path or press Enter for an open path. Choose **New path** to start another. Select a path and activate Pen to move anchors and handles; Alt-drag breaks handle symmetry. The options bar supplies an anchor selector, numeric coordinates relative to the layer bounds, corner/smooth conversion and anchor deletion. A finished path needs at least two anchors. Paths start with a two-pixel foreground stroke and no fill; closed paths can receive solid or gradient fills in Properties.
+
+Gradient drags apply to a selected rectangle, ellipse or closed path, otherwise create a document-sized Gradient rectangle above the selected layer. Choose linear/radial, move the start/end handles directly on the canvas. Add/remove colour stops (2–32), edit their position/opacity, use **Pick stop colour** to sample the canvas, or return to **Solid fill**. Radial start is the centre and end defines radius. Gradients are vector fills, not raster-selection paint.
+
+Each completed stroke, fill, path or handle drag is one undo entry. Escape, changing tools or leaving the window cancels unfinished work. Space/middle-button still pans. Tool controls and selection outlines are session state; committed pixels, paths and gradients save locally and export through the same renderer.
 
 Projects belong to the browser profile and origin where they were saved. Clearing that origin's storage removes local projects. PNG exports are flattened images; portable editable project files are a future addition.
 
@@ -64,7 +75,9 @@ tests/                      Node unit tests and optional real-browser integratio
 tools/                      Dependency-free dev server and optional icon regeneration
 ```
 
-**Document model.** Version 1 is plain JSON: document ID/name/timestamps, canvas dimensions/background, an ordered `layers` array and asset metadata. Every layer has a stable ID, name, visibility, locking, opacity, transform and effects. Variants add `assetId`, `text` or `shape`. Transforms use centre coordinates, positive dimensions, degrees and explicit flip flags. Selection, history, decoded images, viewport and caches are session state, outside project JSON. `validateDocument` rejects unsupported versions, invalid properties and broken asset references.
+**Document model.** Version 2 is plain JSON (version-1 projects migrate on load): document ID/name/timestamps, canvas dimensions/background, an ordered `layers` array and asset metadata. Every layer has a stable ID, name, visibility, locking, opacity, transform and effects. Variants add `assetId`, `text` or `shape`. Transforms use centre coordinates, positive dimensions, degrees and explicit flip flags. Selection, history, decoded images, viewport and caches are session state, outside project JSON. `validateDocument` rejects unsupported versions, invalid properties and broken asset references.
+
+**Drawing tools.** `interaction/tools.js` routes selection and drawing gestures before workspace transforms. `model/vector.js` validates and traces paths/gradients. `rendering/paint.js` maps source pixels, creates selection masks and composites round strokes; `fill-worker.js` runs the iterative flood-fill algorithm. Raster previews are transient renderer overrides; commits swap asset references with stale-document checks.
 
 **Image selections.** `model/pixel-region.js` supplies normalized paths, validation and source-pixel crop bounds. `interaction/pixel-selection.js` owns transient selection gestures and SVG outlines. `rendering/image-pixels.js` extracts cropped PNGs and applies the optional image-layer `eraseRegions` paths using even-odd alpha subtraction before effects. Original assets remain immutable. Erasure commands store the affected path lists; the renderer includes those paths in its cache key while still reusing pixel processing during movement. Older version-1 documents without paths remain valid.
 
@@ -98,6 +111,8 @@ node tests/line-editing.mjs
 node tests/pixel-selection.mjs
 node tests/rasterise.mjs
 node tests/fonts.mjs
+node tests/drawing-tools.mjs
+node tests/painting-engine.mjs
 ```
 
 Start the static server first. `DITHER_URL` can target a subdirectory deployment (include the trailing slash); `DITHER_BROWSER` overrides the default `msedge` channel. Each integration run uses a fresh temporary browser profile and writes screenshots and a PNG to `.test-results/`.
@@ -110,9 +125,9 @@ The integration suite exercises image import, native pointer transforms, modifie
 - PNG export and monochrome Floyd–Steinberg only. Effect order is stored and honoured but cannot yet be reordered in the UI. Stroke has square joins and outside placement only.
 - One selected layer at a time; selection uses object bounds, including transparent image areas, except lines/arrows which are selected near their stroke and heads. The six system font options depend on installed fonts; Inter, Noto Sans and Noto Emoji are bundled.
 - Pixel selection supports one region on one image layer at a time. Selection union/subtraction, feathering, inverse selection, selection movement and general mask editing are not implemented. Freehand paths are limited to 4096 samples; ellipses use 128 segments. Copied regions are limited to 40 million source pixels. Cropped dimensions below one document pixel use the layer's existing one-pixel minimum. Erasures can be reversed through session history; there is no mask-restoration UI after reopening.
-- No autosave, portable `.dither` container, project deletion UI, grouping, pixel painting, blend modes or advanced colour management.
+- No autosave, portable `.dither` container, project deletion UI, grouping, blend modes or advanced colour management.
 - Large documents can still consume substantial memory. Full-resolution compositing and browser-native blur are main-thread operations. Layer caches currently have no global memory budget; worker errors are surfaced and later processing falls back to the main thread.
-- Assets retained for history remain in session memory. Obsolete IndexedDB assets are not garbage-collected yet; repeated replacement of source images can grow storage. Local saves are not a cross-device backup.
+- Assets referenced by the document and undo/redo history remain in session memory; discarded history assets are released. Obsolete IndexedDB assets are not garbage-collected yet; repeated replacement of source images can grow storage. Local saves are not a cross-device backup.
 - Browser canvas/font rasterisation determines rendering fidelity. Effect padding uses three blur radii; very faint blur tails can be truncated.
 
 ## Next steps

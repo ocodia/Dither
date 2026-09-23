@@ -16,7 +16,7 @@ export class Workspace {
     new ResizeObserver(() => this.autoFit ? this.fit() : this.draw()).observe(element);
   }
   point(e) { const rect = this.element.getBoundingClientRect(); return { x: (e.clientX - rect.left - this.view.x) / this.view.zoom, y: (e.clientY - rect.top - this.view.y) / this.view.zoom }; }
-  setTool(tool) { this.pixelSelection?.cancelDraft(); this.tool = tool; this.element.classList.toggle('hand', tool === 'hand'); this.element.classList.toggle('pixel-tool', isSelectionTool(tool)); this.draw(); }
+  setTool(tool) { this.tools?.cancel(); this.finish(true); this.pixelSelection?.cancelDraft(); this.tool = tool; this.element.classList.toggle('drawing-tool', !!this.tools?.active()); this.element.classList.toggle('hand', tool === 'hand'); this.element.classList.toggle('pixel-tool', isSelectionTool(tool)); this.draw(); }
   fit() { this.autoFit = true; const c = this.getDocument().canvas, { width, height } = this.element.getBoundingClientRect(); this.view.zoom = Math.max(.01, Math.min(2, (width - 110) / c.width, (height - 150) / c.height)); this.view.x = (width - c.width * this.view.zoom) / 2; this.view.y = (height - c.height * this.view.zoom) / 2; this.draw(); }
   zoomAt(factor, point = { x: this.element.clientWidth / 2, y: this.element.clientHeight / 2 }) {
     this.autoFit = false;
@@ -24,7 +24,7 @@ export class Workspace {
     this.view.x = point.x - (point.x - this.view.x) * after / before; this.view.y = point.y - (point.y - this.view.y) * after / before; this.view.zoom = after; this.draw();
   }
   down(e) {
-    if (e.target.closest('button') || ![0, 1].includes(e.button)) return;
+    if (e.target.closest('button, input, select, label, #tool-options') || ![0, 1].includes(e.button)) return;
     this.beforeGesture(); this.element.focus({ preventScroll: true });
     const point = this.point(e), pan = e.button === 1 || this.space || this.tool === 'hand';
     if (pan) { this.autoFit = false; this.gesture = { type: 'pan', start: { x: e.clientX, y: e.clientY }, view: { ...this.view } }; }
@@ -65,7 +65,9 @@ export class Workspace {
     this.stage.style.width = `${c.width}px`; this.stage.style.height = `${c.height}px`; this.stage.style.transform = `translate(${x}px,${y}px) scale(${zoom})`;
     this.overlay.setAttribute('viewBox', `0 0 ${c.width} ${c.height}`);
     const layer = this.getSelected();
-    if (!layer || !layer.visible || layer.locked) this.overlay.innerHTML = '';
+    const toolOverlay = this.tools?.overlay();
+    if (toolOverlay != null) this.overlay.innerHTML = toolOverlay;
+    else if (!layer || !layer.visible || layer.locked) this.overlay.innerHTML = '';
     else if (this.pixelSelection && (isSelectionTool(this.tool) || this.pixelSelection.current())) this.overlay.innerHTML = this.pixelSelection.overlay(layer, zoom);
     else if (isLineLayer(layer)) {
       const [start, end] = lineEndpoints(layer.transform);
