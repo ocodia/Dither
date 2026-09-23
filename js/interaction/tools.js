@@ -9,6 +9,8 @@ import { floodFill } from '../rendering/flood-fill.js';
 
 const names={eyedropper:'Eyedropper',brush:'Brush',eraser:'Eraser',fill:'Fill',pen:'Pen',gradient:'Gradient'};
 const paintTools=['brush','eraser','fill'];
+const penStyleKeys=['fill','stroke','fillOpacity','strokeWidth','strokeOpacity'];
+const pathStyle=shape=>Object.fromEntries(penStyleKeys.map(key=>[key,shape[key]]));
 const toolIcons={eyedropper:'eyedropper',brush:'paint-brush',eraser:'eraser-tool',fill:'paint-bucket',pen:'pen',gradient:'color-background'};
 const hexRGB=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -16,18 +18,21 @@ const anchor=p=>({...p,in:{...p},out:{...p}});
 const field=(label,key,value,min,max,step=1)=>`<label><span>${label}</span><input data-setting="${key}" type="number" value="${value}" min="${min}" max="${max}" step="${step}"></label>`;
 
 const toolButton=(action,label,glyph,disabled=false)=>`<button type="button" data-tool-action="${action}" title="${label}" ${disabled?'disabled':''}>${icon(glyph)}<span>${label}</span></button>`;
-const slider=(label,key,value,min,max,step=1,scope='setting')=>`<label class="tool-slider"><span>${label}</span><input data-${scope}="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"><output>${max===1?Math.round(value*100)+'%':value}</output></label>`;
+const slider=(label,key,value,min,max,step=1,scope='setting',accessibleLabel=label)=>`<label class="tool-slider"><span>${label}</span><input aria-label="${accessibleLabel}" data-${scope}="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"><output>${max===1?Math.round(value*100)+'%':value}</output></label>`;
 
 export class ToolController {
   constructor(workspace,options) {
     this.workspace=workspace;Object.assign(this,options);
     this.settings={foreground:'#000000',background:'#ffffff',opacity:1,size:20,hardness:1,tolerance:0,gradientType:'linear'};
-    this.token=0;this.revision=0;this.anchorIndex=0;this.stopIndex=0;this.gesture=null;this.path=null;this.cursor=null;this.busy=false;
+    this.penStyle={fill:'#6799f5',stroke:'#000000',fillOpacity:0,strokeWidth:2,strokeOpacity:1};
+    this.penStyleEdit=null;
+    this.token=0;this.revision=0;this.anchorIndex=0;this.stopIndex=0;this.gesture=null;this.path=null;this.pathLayer=null;this.cursor=null;this.busy=false;
     const area=workspace.element;
     for(const type of ['pointerdown','pointermove','pointerup','pointercancel','lostpointercapture','dblclick'])area.addEventListener(type,e=>this.route(type,e),true);
     area.addEventListener('pointerleave',()=>{this.cursor=null;workspace.draw();});
     this.controls.addEventListener('change',e=>this.change(e));
     this.controls.addEventListener('input',e=>{
+      if(e.target.dataset.penStyle){this.changePenStyle(e.target,false);}
       if(e.target.type!=='range')return;
       const output=e.target.closest('label').querySelector('output');
       output.value=Number(e.target.max)===1?Math.round(Number(e.target.value)*100)+'%':e.target.value;
@@ -49,23 +54,37 @@ export class ToolController {
   world(p,layer){const t=layer.transform;return localToWorld({x:(p.x-.5)*t.width,y:(p.y-.5)*t.height},t);}
   sync(){
     const layer=this.getLayer();
+    if(this.pathLayer && (layer!==this.pathLayer || layer.locked || !layer.visible || !this.getDocument().layers.includes(layer)))this.cancel();
     if(this.gesture && (this.gesture.layer && (layer!==this.gesture.layer||layer.locked||!layer.visible)))this.cancel();
     if(!this.controls.contains(document.activeElement))this.renderControls();
   }
-  canFinishPath(){return (this.path?.length || 0)>=2;}
-  updateFinishButton(){const button=this.controls.querySelector('[data-tool-action="finish-path"]');if(button)button.disabled=!this.canFinishPath();}
+  canClosePath(){
+    const layer=this.penStyleTarget();
+    return isPath(layer)&&layer.visible&&!layer.locked&&!layer.shape.closed&&(this.path?.length||layer.shape.anchors.length)>=3;
+  }
+  canFinishPath(){return !!this.pathLayer && (this.path?.length || 0)>=2;}
+  updateFinishButton(){const button=this.controls.querySelector('[data-tool-action="finish-path"]');if(button){button.disabled=!this.canFinishPath();button.hidden=!this.canFinishPath();}}
   renderControls(){
     const tool=this.workspace.tool,s=this.settings,l=this.getLayer();
     this.controls.hidden=!this.active();if(!this.active())return;
-    let html=`${icon(toolIcons[tool])}<strong>${names[tool]}</strong><label>Foreground<input aria-label="Foreground colour" data-setting="foreground" type="color" value="${s.foreground}"></label><label>Background<input aria-label="Background colour" data-setting="background" type="color" value="${s.background}"></label>`;
+    this.controls.setAttribute('aria-label',`${names[tool]} tool options`);
+    let html=icon(toolIcons[tool]);
+    if(tool==='pen'){
+      const target=this.penStyleTarget(),style=target?.shape || this.penStyle;
+      const disabled=target&&(target.locked||!target.visible);
+      html+=`<fieldset class="pen-style-options" aria-label="Fill" ${disabled?'disabled':''}><label>Fill<input aria-label="Path fill colour" data-pen-style="fill" type="color" value="${style.fill}"></label>${slider('Opacity','fillOpacity',style.fillOpacity,0,1,.01,'pen-style','Fill opacity')}</fieldset><fieldset class="pen-style-options pen-stroke-options" aria-label="Stroke" ${disabled?'disabled':''}><label>Stroke<input aria-label="Path stroke colour" data-pen-style="stroke" type="color" value="${style.stroke}"></label>${slider('Width','strokeWidth',style.strokeWidth,0,100,1,'pen-style','Stroke width')}${slider('Opacity','strokeOpacity',style.strokeOpacity,0,1,.01,'pen-style','Stroke opacity')}</fieldset>`;
+    }else html+=`<label>Foreground<input aria-label="Foreground colour" data-setting="foreground" type="color" value="${s.foreground}"></label><label>Background<input aria-label="Background colour" data-setting="background" type="color" value="${s.background}"></label>`;
     if(paintTools.includes(tool)||tool==='eyedropper')html+=slider('Opacity','opacity',s.opacity,0,1,.01);
     if(['brush','eraser'].includes(tool))html+=field('Size (px)','size',s.size,1,1024)+slider('Hardness','hardness',s.hardness,0,1,.01);
     if(tool==='fill')html+=slider('Tolerance','tolerance',s.tolerance,0,255);
     if(tool==='pen'){
-      html+=toolButton('new-path','New path','add')+toolButton('finish-path','Finish path','checkmark-circle',!this.canFinishPath());
-      if(isPath(l)&&!l.locked){this.anchorIndex=Math.min(this.anchorIndex,l.shape.anchors.length-1);
-        html+=toolButton('smooth','Smooth','bezier-curve')+toolButton('corner','Corner','square')+toolButton('delete-anchor','Delete anchor','delete');
+      let actions='';
+      if(this.canFinishPath())actions+=toolButton('finish-path','Finish path','checkmark-circle');
+      if(!this.path&&isPath(l)&&!l.locked&&l.visible){this.anchorIndex=Math.min(this.anchorIndex,l.shape.anchors.length-1);
+        actions+=toolButton('smooth','Smooth','bezier-curve')+toolButton('corner','Corner','square')+toolButton('delete-anchor','Delete anchor','delete');
       }
+      if(this.canClosePath())actions+=toolButton('close-shape','Close shape','pentagon');
+      if(actions)html+=`<div class="pen-path-actions" role="group" aria-label="Path actions">${actions}</div>`;
     }
     if(tool==='gradient'){
       const g=canGradient(l)&&l.shape.gradient;html+=`<label>Type<select data-setting="gradientType"><option value="linear" ${(g?.type||s.gradientType)==='linear'?'selected':''}>Linear</option><option value="radial" ${(g?.type||s.gradientType)==='radial'?'selected':''}>Radial</option></select></label>`;
@@ -76,7 +95,29 @@ export class ToolController {
     }
     this.controls.innerHTML=html;
   }
+  penStyleTarget(){return this.pathLayer || (!this.path&&isPath(this.getLayer())?this.getLayer():null);}
+  changePenStyle(control,commit){
+    const key=control.dataset.penStyle;if(!penStyleKeys.includes(key))return;
+    const target=this.penStyleTarget();if(target&&(target.locked||!target.visible))return;
+    let value=control.type==='color'?control.value:Number(control.value);
+    if(control.type==='color'){if(!/^#[\da-f]{6}$/i.test(value))return;}
+    else{if(!Number.isFinite(value))return;value=Math.max(0,Math.min(key==='strokeWidth'?100:1,value));}
+    if(target){
+      if(this.penStyleEdit&&(this.penStyleEdit.target!==target||this.penStyleEdit.control!==control))this.finishPenStyleEdit();
+      if(!this.penStyleEdit)this.penStyleEdit={target,control,before:clone(target.shape)};
+      target.shape[key]=value;
+      if(key==='fill')delete target.shape.gradient;
+      this.penStyle=pathStyle(target.shape);this.preview();this.workspace.draw();
+      if(commit)this.finishPenStyleEdit();
+    }else this.penStyle[key]=value;
+  }
+  finishPenStyleEdit(){
+    const edit=this.penStyleEdit;if(!edit)return;this.penStyleEdit=null;
+    const after=clone(edit.target.shape);edit.target.shape=edit.before;
+    if(!same(edit.before,after)&&this.getDocument().layers.includes(edit.target))this.patch(edit.target,{shape:after},'Change path style');
+  }
   change(e){
+    if(e.target.dataset.penStyle){this.changePenStyle(e.target,true);return;}
     const el=e.target,key=el.dataset.setting,l=this.getLayer(),numeric=['number','range'].includes(el.type);
     if(key){let value=numeric?Number(el.value):el.value;if(numeric){if(el.value===''||!Number.isFinite(value))return;value=Math.max(Number(el.min),Math.min(Number(el.max),value));el.value=value;}this.settings[key]=value;
       if(key==='gradientType'&&canGradient(l)&&l.shape.gradient&&!l.locked){const shape=clone(l.shape);shape.gradient.type=value;this.patch(l,{shape},'Change gradient type');}return;}
@@ -91,10 +132,17 @@ export class ToolController {
     const action=e.target.closest('[data-tool-action]')?.dataset.toolAction;if(!action)return;
     const l=this.getLayer();
     if(action==='rasterise'){this.cancel();this.rasterise();return;}
-    if(action==='new-path'){this.cancel();this.select(null);return;}
     if(action==='finish-path'){this.finishPath(false);return;}
+    if(action==='close-shape'){
+      if(!this.canClosePath())return;
+      this.finishPenStyleEdit();
+      if(this.pathLayer)this.finishPath(true);
+      else{this.patch(l,{shape:{...clone(l.shape),closed:true}},'Close path');this.renderControls();}
+      return;
+    }
     if(!l||l.locked||!l.visible)return;
     if(['smooth','corner','delete-anchor'].includes(action)&&isPath(l)){
+      if(this.pathLayer===l)this.finishPath(false);
       const shape=clone(l.shape),i=this.anchorIndex,a=shape.anchors[i];
       if(action==='delete-anchor'){if(shape.anchors.length<=2){this.notify('A path needs at least two anchors.');return;}shape.anchors.splice(i,1);this.anchorIndex=Math.max(0,i-1);}
       if(action==='corner'){a.in={x:a.x,y:a.y};a.out={x:a.x,y:a.y};}
@@ -132,9 +180,11 @@ export class ToolController {
   capture(e){this.gesture.pointerId=e.pointerId;this.workspace.element.setPointerCapture(e.pointerId);}
   release(g){if(g?.pointerId!==undefined&&this.workspace.element.hasPointerCapture(g.pointerId))this.workspace.element.releasePointerCapture(g.pointerId);}
   cancel(){
+    this.finishPenStyleEdit();
+    const hadPath=!!this.path;
     this.token++;this.workerReject?.(new Error('Fill cancelled.'));this.workerReject=null;this.worker?.terminate();this.worker=null;this.busy=false;const g=this.gesture;this.gesture=null;
     if(g?.before&&g.layer){g.layer.shape=g.before;g.layer.transform=g.transform;}
-    this.path=null;this.updateFinishButton();this.sampleTarget=null;this.renderer.preview=null;this.release(g);this.preview();this.workspace.draw();
+    this.path=null;this.pathLayer=null;this.updateFinishButton();this.sampleTarget=null;this.renderer.preview=null;this.release(g);this.preview();this.workspace.draw();if(hadPath)this.renderControls();
   }
   down(e){
     if(this.busy||this.gesture)return;const p=this.workspace.point(e),tool=this.workspace.tool,l=this.getLayer();
@@ -152,11 +202,12 @@ export class ToolController {
     }
     if(tool==='pen'){
       const handle=e.target.closest('[data-anchor-handle]');
-      if(handle&&isPath(l)&&!l.locked&&l.visible){this.anchorIndex=Number(handle.dataset.anchorIndex);this.gesture={type:'anchor',layer:l,before:clone(l.shape),transform:clone(l.transform),part:handle.dataset.anchorHandle,index:this.anchorIndex};this.capture(e);this.renderControls();this.workspace.draw();return;}
+      if(!this.path&&handle&&isPath(l)&&!l.locked&&l.visible){this.anchorIndex=Number(handle.dataset.anchorIndex);this.gesture={type:'anchor',layer:l,before:clone(l.shape),transform:clone(l.transform),part:handle.dataset.anchorHandle,index:this.anchorIndex};this.capture(e);this.renderControls();this.workspace.draw();return;}
       if(this.path&&this.path.length>=2&&Math.hypot(p.x-this.path[0].x,p.y-this.path[0].y)*this.workspace.view.zoom<8){this.finishPath(true);return;}
-      if(!this.path)this.path=[];
+      const beforePath=clone(this.path);
+      if(!this.path){if(isPath(l))this.penStyle=pathStyle(l.shape);this.path=[];}
       if(this.path.length>=4096){this.notify('Finish this path before adding more anchors.');return;}
-      this.path.push(anchor(p));this.updateFinishButton();this.gesture={type:'pen-point',index:this.path.length-1};this.capture(e);this.workspace.draw();return;
+      this.path.push(anchor(p));this.updateFinishButton();this.gesture={type:'pen-point',index:this.path.length-1,beforePath};this.capture(e);this.workspace.draw();return;
     }
     if(tool==='gradient'){
       if(l&&(l.locked||!l.visible)){this.notify('Select a visible, unlocked layer.');return;}
@@ -191,6 +242,7 @@ export class ToolController {
     this.move(e);
     if(['brush','eraser'].includes(g.type)){this.gesture=null;this.release(g);this.commitPaint(g,g.output);return;}
     this.gesture=null;this.release(g);
+    if(g.type==='pen-point'&&this.path.length>=2&&!this.commitDraftPath())this.path=g.beforePath;
     if(g.type==='anchor'){const shape=clone(g.layer.shape);g.layer.shape=g.before;this.commitPathEdit(g.layer,shape);}
     if(g.type==='gradient'){
       const shape=clone(g.layer.shape);g.layer.shape=g.before;
@@ -250,17 +302,43 @@ export class ToolController {
     return {shape,transform:{...t,...centre,width:b.width,height:b.height}};
   }
   commitPathEdit(l,shape){try{const changes=this.normalise(l,shape);if(!same(changes,{shape:l.shape,transform:l.transform}))this.patch(l,changes,'Edit path');}catch(error){this.notify(error.message,true);this.preview();}}
+  commitDraftPath(closed=false){
+    if(!this.path || this.path.length<2)return false;
+    const layer=this.pathLayer || createLayer('shape',this.getDocument().canvas,{name:'Path'}),b=pathBounds(this.path);
+    try{
+      checkSize(Math.ceil(b.width),Math.ceil(b.height));
+      const point=p=>({x:(p.x-b.x)/b.width,y:(p.y-b.y)/b.height});
+      const shape={...clone(layer.shape),kind:'path',closed,anchors:this.path.map(a=>({...point(a),in:point(a.in),out:point(a.out)}))};
+      const transform={...layer.transform,x:b.x+b.width/2,y:b.y+b.height/2,width:b.width,height:b.height};
+      this.anchorIndex=this.path.length-1;
+      if(this.pathLayer){
+        if(!same({shape,transform},{shape:layer.shape,transform:layer.transform}))this.patch(layer,{shape,transform},closed?'Close path':'Edit path anchors');
+      }else{
+        Object.assign(shape,this.penStyle);
+        Object.assign(layer,{shape,transform});this.pathLayer=layer;this.insert(layer);
+      }
+      return true;
+    }catch(error){this.notify(error.message,true);return false;}
+  }
   finishPath(closed){
     if(!this.canFinishPath())return;
-    const l=createLayer('shape',this.getDocument().canvas,{name:'Path'}),b=pathBounds(this.path);
-    try{checkSize(Math.ceil(b.width),Math.ceil(b.height));const point=p=>({x:(p.x-b.x)/b.width,y:(p.y-b.y)/b.height});
-      Object.assign(l.transform,{x:b.x+b.width/2,y:b.y+b.height/2,width:b.width,height:b.height});Object.assign(l.shape,{kind:'path',closed,anchors:this.path.map(a=>({...point(a),in:point(a.in),out:point(a.out)})),stroke:this.settings.foreground,strokeWidth:2,strokeOpacity:this.settings.opacity,fillOpacity:0});
-      this.anchorIndex=this.path.length-1;this.path=null;const g=this.gesture;this.gesture=null;this.release(g);this.insert(l);this.renderControls();
-    }catch(error){this.notify(error.message,true);}
+    if(!this.commitDraftPath(closed))return;
+    this.path=null;this.pathLayer=null;const g=this.gesture;this.gesture=null;this.release(g);this.renderControls();this.workspace.draw();
+  }
+  removeDraftAnchor(){
+    // End any current pointer sample before removing its anchor.
+    const g=this.gesture;this.gesture=null;this.release(g);
+    const before=clone(this.path);this.path.pop();
+    if(this.pathLayer){
+      if(this.path.length<2){const layer=this.pathLayer;this.pathLayer=null;this.remove(layer);}
+      else if(!this.commitDraftPath())this.path=before;
+    }
+    if(!this.path.length)this.path=null;
+    this.renderControls();this.workspace.draw();
   }
   key(e){
     if(e.key==='Escape'&&(this.gesture||this.path||this.busy||this.sampleTarget)){e.preventDefault();this.cancel();return true;}
-    if(this.workspace.tool==='pen'&&this.path&&['Enter','Backspace','Delete'].includes(e.key)){e.preventDefault();if(e.key==='Enter')this.finishPath(false);else{this.path.pop();if(!this.path.length)this.path=null;this.updateFinishButton();this.workspace.draw();}return true;}
+    if(this.workspace.tool==='pen'&&this.path&&['Enter','Backspace','Delete'].includes(e.key)){e.preventDefault();if(e.key==='Enter')this.finishPath(false);else this.removeDraftAnchor();return true;}
     if(this.workspace.tool==='pen'&&isPath(this.getLayer())&&['Backspace','Delete'].includes(e.key)){e.preventDefault();this.action({target:{closest:()=>({dataset:{toolAction:'delete-anchor'}})}});return true;}
     return false;
   }

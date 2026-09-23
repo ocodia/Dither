@@ -1005,12 +1005,11 @@ dialog .field-grid label {
 #tool-options input[type=color] { width: 34px; height: 30px; padding: 2px; }
 #tool-options select { width: auto; height: 30px; padding: 4px 22px 4px 6px; }
 #tool-options input[type=range] { width: 88px; min-width: 60px; padding: 0; accent-color: var(--accent); cursor: pointer; }
-#tool-options output { min-width: 32px; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+#tool-options output { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
 #tool-options button { min-height: 30px; padding: 4px 8px; border: 1px solid #505864; background: #353c46; box-shadow: 0 1px 2px #0003; }
 #tool-options button:hover:not(:disabled) { background: #454f5d; border-color: var(--accent); }
 #tool-options button:active:not(:disabled) { background: #25364e; }
 #tool-options button .icon { font-size: 16px; }
-#tool-options strong { margin-right: 2px; }
 #selection-tool-toggle { position: relative; }
 #selection-tool-toggle .tool-menu-caret { position: absolute; width: 10px; height: 10px; right: 1px; bottom: 1px; }
 #selection-tool-menu { position: fixed; inset: auto; margin: 0; padding: 6px; width: 265px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); box-shadow: 0 8px 30px #0006; }
@@ -1019,3 +1018,8 @@ dialog .field-grid label {
 #selection-tool-menu kbd { margin-left: auto; color: var(--muted); font: inherit; font-size: 11px; }
 
 .workspace.drawing-tool { cursor: crosshair; }
+
+#tool-options .pen-style-options { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; border: 0; padding: 0; margin: 0; min-width: 0; max-width: 100%; }
+#tool-options .pen-stroke-options { border-left: 1px solid #505864; padding-left: 12px; }
+
+#tool-options .pen-path-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-left: 1px solid #505864; padding-left: 12px; max-width: 100%; }

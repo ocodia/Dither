@@ -33,7 +33,7 @@ try{
   await key('g');await drag(.2,.4,.8,.7);await committed(beforeCancel+1);assert.equal(await page.locator('[data-path=name]').inputValue(),'Gradient');
   await page.locator('[data-setting=gradientType]').selectOption('radial');await ready();await page.locator('[data-tool-action=add-stop]').click();await ready();assert.equal(await page.locator('[data-vector=stop-index] option').count(),3);
   await page.locator('[data-stop=colour]').fill('#ff00ff');await ready();
-  await key('p');await page.locator('[data-tool-action=new-path]').click();await click(.2,.4);await drag(.5,.65,.55,.55);await click(.75,.45);await key('Enter');
+  await key('p');await click(.2,.4);await drag(.5,.65,.55,.55);await click(.75,.45);await key('Enter');
   assert.equal(await page.locator('[data-path=name]').inputValue(),'Path');assert.equal(await page.locator('[data-anchor-handle=point]').count(),3);
   const idleHistory=await historyCount();await page.locator('[data-anchor-handle=point]').first().click();await ready();assert.equal(await historyCount(),idleHistory);
   const h=await historyCount();const handle=page.locator('[data-anchor-handle=point]').nth(1),box=await handle.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+35,box.y+45);await page.mouse.up();await committed(h+1);await key('Control+z');await key('Control+Shift+z');

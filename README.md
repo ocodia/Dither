@@ -48,11 +48,11 @@ Drawing tools use **I** (Eyedropper), **B** (Brush), **Shift E** (Eraser), **F**
 
 Brush, eraser and fill are disabled unless a paintable image is selected. They edit the selected visible, unlocked image at its original resolution before layer effects. Use **New layer** in the Layers panel for a blank transparent canvas-sized image, or explicitly **Rasterise** text/shapes. Brush/eraser support size in source pixels, hardness and opacity; fill uses four-connected pixels and a 0–255 premultiplied-RGBA tolerance. Active pixel selections clip painting. Each edit creates an independent immutable PNG asset, so duplicates remain unchanged. Existing erasures are baked into the new pixels; painting can restore colour over them. Painting is limited to 8192 pixels per source edge and 32 million source pixels. Pressure dynamics are not included.
 
-With Pen, click anchors and drag for curves. Click the first point to close a path or press Enter for an open path. Choose **New path** to start another. Select a path and activate Pen to move anchors and handles; Alt-drag breaks handle symmetry. Select anchors directly on the canvas; the options bar supplies corner/smooth conversion and anchor deletion. Finish path is enabled once an unfinished path has at least two anchors. A finished path needs at least two anchors. Paths start with a two-pixel foreground stroke and no fill; closed paths can receive solid or gradient fills in Properties.
+With Pen, click anchors and drag for curves. Click the first point to close a path or press Enter for an open path. The second anchor creates and selects a new path layer immediately. Further anchors extend that layer until you choose **Finish path**, press Enter or close it. Drawing again starts a separate layer automatically, even when the finished path remains selected. Select a path and activate Pen to move anchors and handles; Alt-drag breaks handle symmetry. Select anchors directly on the canvas; the options bar supplies corner/smooth conversion and anchor deletion. Finish path appears only while extending a newly created path. Close shape is available for open paths with at least three anchors, while drawing or after finishing, and is undoable. A finished path needs at least two anchors. Pen options expose path fill/stroke colours, fill opacity, stroke width and stroke opacity, synchronized with the selected path and Properties. With no path selected they set the style for the next path; defaults are a two-pixel black stroke and no fill. Fill appears on closed paths. Choosing a fill colour replaces a gradient with a solid fill.
 
 Gradient drags apply to a selected rectangle, ellipse or closed path, otherwise create a document-sized Gradient rectangle above the selected layer. Choose linear/radial, move the start/end handles directly on the canvas. Add/remove colour stops (2–32), edit their position/opacity, use **Pick stop colour** to sample the canvas, or return to **Solid fill**. Radial start is the centre and end defines radius. Gradients are vector fills, not raster-selection paint.
 
-Each completed stroke, fill, path or handle drag is one undo entry. Escape, changing tools or leaving the window cancels unfinished work. Space/middle-button still pans. Tool controls and selection outlines are session state; committed pixels, paths and gradients save locally and export through the same renderer.
+Each completed stroke, fill or handle drag is one undo entry. Pen creates one entry for the initial two-anchor layer, then one for each added anchor or closure. Escape, changing tools or leaving the window discards uncommitted gestures; path anchors already added to a layer remain. Space/middle-button still pans. Tool controls and selection outlines are session state; committed pixels, paths and gradients save locally and export through the same renderer.
 
 Projects belong to the browser profile and origin where they were saved. Clearing that origin's storage removes local projects. PNG exports are flattened images; portable editable project files are a future addition.
 
@@ -112,6 +112,7 @@ node tests/pixel-selection.mjs
 node tests/rasterise.mjs
 node tests/fonts.mjs
 node tests/drawing-tools.mjs
+node tests/pen-paths.mjs
 node tests/painting-engine.mjs
 ```
 

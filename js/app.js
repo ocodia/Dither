@@ -41,6 +41,7 @@ const toolController = new ToolController(workspace, {
   getDocument: () => doc, getAssets: () => assets, getLayer: selected,
   select: id => { selectedId = id; refresh(); }, beforeGesture: finishEdit,
   patch: commandPatch, preview: requestRender, notify: toast, rasterise,
+  remove: layer => history.execute(deleteCommand(doc, layer)),
   insert: layer => { const index = selected() ? doc.layers.indexOf(selected()) + 1 : doc.layers.length; selectedId = layer.id; history.execute(insertCommand(doc, layer, index)); },
 });
 workspace.tools = toolController;
