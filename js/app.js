@@ -18,6 +18,7 @@ let edit = null, toastTimer, rendering = false, renderNeeded = false, frame = 0,
 const renderer = new DocumentRenderer(), openedEffects = new Set(['dither']), collapsedProperties = new Set();
 const selected = () => doc.layers.find(l => l.id === selectedId) || null;
 let pixelClipboard = null, pixelBusy = false;
+let rasterising = false;
 const history = new History(() => refresh());
 const workspace = new Workspace({ element: $('#workspace'), stage: $('#stage'), overlay: $('#overlay'), getDocument: () => doc, getSelected: selected,
   select: id => { finishEdit(); selectedId = id; refresh(); }, preview: () => requestRender(), beforeGesture: () => finishEdit(),
@@ -104,6 +105,8 @@ function refresh() {
   const activeField = document.activeElement?.closest('[data-path]');
   // Keep the focused control alive so typing and Tab navigation survive a commit.
   if (!edit && !activeField) { $('#properties').innerHTML = propertiesHTML(doc, layer, collapsedProperties); $('#effects').innerHTML = effectsHTML(layer, openedEffects); }
+  const rasteriseButton = $('[data-action=rasterise]');
+  if (rasteriseButton) { rasteriseButton.disabled = rasterising || layer.locked; rasteriseButton.textContent = rasterising ? 'Rasterising…' : 'Rasterise'; }
   $('#layers').innerHTML = layersHTML(doc, selectedId); $('#layer-count').textContent = doc.layers.length;
   $('#effect-count').textContent = layer?.effects.filter(e => e.enabled).length || 0;
   $('#history').innerHTML = historyHTML(history, hasSaved);
@@ -144,6 +147,34 @@ async function importFiles(files) {
     } catch (error) { if (epoch !== documentEpoch) return; toast(error.message, true); }
   }
   setTab('properties');
+}
+async function rasterise() {
+  finishEdit(); workspace.finish();
+  const source = selected();
+  if (rasterising || !source || source.locked || source.type !== 'shape') return;
+  const snapshot = clone(source), epoch = documentEpoch, destination = assets, document = doc;
+  const unchanged = () => epoch === documentEpoch && doc.layers.includes(source) && JSON.stringify(source) === JSON.stringify(snapshot);
+  rasterising = true; refresh();
+  let meta, inserted = false;
+  try {
+    const { blob, transform } = await renderer.rasteriseLayer(snapshot, destination);
+    if (!unchanged()) throw new Error('The layer changed while rasterising. Please try again.');
+    meta = await destination.add(blob);
+    if (!unchanged()) throw new Error('The layer changed while rasterising. Please try again.');
+    meta.name = `${snapshot.name}.png`;
+    const image = { ...snapshot, type: 'image', assetId: meta.id, transform, effects: [] };
+    delete image.shape;
+    document.assets.push(meta);
+    history.execute({ label: `Rasterise ${source.name}`,
+      redo: () => document.layers.splice(document.layers.indexOf(source), 1, image),
+      undo: () => document.layers.splice(document.layers.indexOf(image), 1, source) });
+    inserted = true;
+    toast('Layer rasterised. Undo restores the editable shape.');
+  } catch (error) { if (epoch === documentEpoch) toast(error.message, true); }
+  finally {
+    if (meta && !inserted) { destination.images.get(meta.id)?.close(); destination.images.delete(meta.id); destination.blobs.delete(meta.id); }
+    rasterising = false; refresh();
+  }
 }
 function canDiscard() { finishEdit(); workspace.finish(); return !history.dirty || window.confirm('Discard unsaved changes to this document? Save first to keep an editable copy.'); }
 function replaceDocument(nextDoc, nextAssets, saved = false) {
@@ -223,7 +254,7 @@ const actions = {
   duplicate: () => { const source = selected(); if (!source || source.locked) return; const layer = clone(source); layer.id = uid(); layer.name += ' copy'; layer.transform.x += 20; layer.transform.y += 20; layer.effects.forEach(e => { e.id = uid(); }); selectedId = layer.id; history.execute(insertCommand(doc, layer, doc.layers.indexOf(source) + 1)); },
   delete: () => { const layer = selected(); if (layer && !layer.locked) history.execute(deleteCommand(doc, layer)); },
   raise: () => reorder(1), lower: () => reorder(-1),
-  'flip-x': () => flip('flipX'), 'flip-y': () => flip('flipY'),
+  'flip-x': () => flip('flipX'), 'flip-y': () => flip('flipY'), rasterise,
   'zoom-in': () => workspace.zoomAt(1.2), 'zoom-out': () => workspace.zoomAt(1 / 1.2), 'zoom-reset': () => workspace.zoomAt(1 / workspace.view.zoom), fit: () => workspace.fit(),
   canvas: () => { selectedId = null; collapsedProperties.delete('canvas'); setTab('properties'); refresh(); $('#inspector').classList.add('mobile-open'); },
   panels: () => { $('#inspector').classList.toggle('mobile-open'); }, help: () => $('#help-dialog').showModal()

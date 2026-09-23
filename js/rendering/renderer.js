@@ -1,5 +1,6 @@
 import { applyEffects, effectPadding, surface } from './effects.js';
-import { rad } from '../interaction/geometry.js';
+import { rad, localToWorld } from '../interaction/geometry.js';
+import { checkSize } from '../model/document.js';
 import { isLineLayer, arrowMetrics } from '../model/line.js';
 import { applyErasures } from './image-pixels.js';
 
@@ -91,6 +92,16 @@ export class DocumentRenderer {
       const t = layer.transform; ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(rad(t.rotation)); ctx.scale(t.flipX ? -1 : 1, t.flipY ? -1 : 1); ctx.globalAlpha = layer.opacity;
       ctx.drawImage(canvas, -t.width / 2 - padding, -t.height / 2 - padding); ctx.restore();
     }
+  }
+  async rasteriseLayer(layer, assets) {
+    if (layer.type !== 'shape') throw new Error('Select a shape, line or arrow to rasterise.');
+    const { canvas, padding } = await this.renderLayer(layer, assets);
+    checkSize(canvas.width, canvas.height);
+    const t = layer.transform;
+    // Include strokes/effects and compensate for rounding fractional dimensions.
+    const centre = localToWorld({ x: (canvas.width - t.width) / 2 - padding, y: (canvas.height - t.height) / 2 - padding }, t);
+    const blob = await new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not rasterise this layer. Try a smaller size.')), 'image/png'));
+    return { blob, transform: { ...t, ...centre, width: canvas.width, height: canvas.height } };
   }
   async exportPNG(doc, assets) {
     const canvas = surface(doc.canvas.width, doc.canvas.height); await this.renderDocument(doc, assets, canvas);

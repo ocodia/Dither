@@ -23,6 +23,7 @@ To deploy on GitHub Pages, publish the directory as static files. All app, icon,
 - Move, eight resize handles, rotation and flips. Shift preserves proportions/snaps rotation; Alt/Option resizes from the centre. Numeric transform controls provide keyboard-accessible alternatives.
 - Editable text content, font, weight/style, colour, alignment, line height, letter spacing and wrapping within a text box.
 - Editable shape fill, stroke and opacity, rectangle corners and configurable arrowheads.
+- Rasterise rectangles, ellipses, lines and arrows from Properties into image layers, baking current effects while preserving appearance and stacking order. Undo restores the editable shape during the session.
 - Brightness, contrast, monochrome Floyd–Steinberg dithering, colour overlay, outside stroke, blur and drop shadow. Each effect can be enabled, configured and reset independently.
 - Command-based undo/redo, including one entry per pointer gesture, slider gesture or committed text edit.
 - Explicit browser-local project saves and reopening with original image Blobs stored separately; full-resolution transparent PNG export.
@@ -95,6 +96,7 @@ node tests/browser.mjs
 node tests/editor-ui.mjs
 node tests/line-editing.mjs
 node tests/pixel-selection.mjs
+node tests/rasterise.mjs
 ```
 
 Start the static server first. `DITHER_URL` can target a subdirectory deployment (include the trailing slash); `DITHER_BROWSER` overrides the default `msedge` channel. Each integration run uses a fresh temporary browser profile and writes screenshots and a PNG to `.test-results/`.

@@ -24,6 +24,7 @@ export function propertiesHTML(doc, layer, collapsed = new Set()) {
   }
   if (layer.type === 'image') { const a = doc.assets.find(a => a.id === layer.assetId); html += group("image", "Original image", `<p class="property-note">${escapeHTML(a?.name)}<br>${a?.width} × ${a?.height} px · ${escapeHTML(a?.mime?.replace('image/', '').toUpperCase())}<br>Your original image is preserved.</p>`); }
   html += group("transform", "Transform", `<div class="field-grid">${num('X · centre', 'transform.x', t.x, -100000, 100000, 0.1)}${num('Y · centre', 'transform.y', t.y, -100000, 100000, 0.1)}${num('Width', 'transform.width', t.width, 1, 8192, 0.1)}${num('Height', 'transform.height', t.height, 1, 8192, 0.1)}${num('Rotation °', 'transform.rotation', t.rotation, -36000, 36000, 0.1)}${num('Opacity', 'opacity', layer.opacity, 0, 1, 0.01)}</div><div class="button-row"><button data-action="flip-x" aria-pressed="${t.flipX}">${icon('flip-horizontal')} Flip H</button><button data-action="flip-y" aria-pressed="${t.flipY}">${icon('flip-vertical')} Flip V</button></div>`);
+  if (layer.type === 'shape') html += section('<button data-action="rasterise">Rasterise</button><p class="property-note">Convert to an image, including current effects. Undo restores the editable shape.</p>');
   return html + '</fieldset>';
 }
 export function effectsHTML(layer, opened = new Set()) {
