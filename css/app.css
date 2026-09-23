@@ -140,7 +140,7 @@ label {
   flex-direction: column;
   gap: 7px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 textarea {
   resize: vertical;
@@ -268,7 +268,7 @@ textarea {
   padding: 5px;
 }
 .zoom-controls #zoom-value {
-  font-size: 11px;
+  font-size: 12px;
   min-width: 53px;
 }
 .processing {
@@ -301,7 +301,7 @@ textarea {
   border-radius: 0;
   border: 0;
   padding: 0 3px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .inspector-tabs button[aria-selected="true"] {
@@ -392,7 +392,7 @@ textarea {
   font-size: 10px;
 }
 .property-note {
-  font-size: 11px;
+  font-size: 12px;
   color: #7e8799;
   line-height: 1.7;
   margin: 12px 0 0;
@@ -420,7 +420,7 @@ textarea {
   gap: 8px;
   padding: 12px 8px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   list-style: none;
 }
 .effect-card summary::-webkit-details-marker {
@@ -477,7 +477,7 @@ textarea {
   flex-shrink: 0;
 }
 .panel-heading h2 {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   margin: 0;
   display: flex;
@@ -543,7 +543,7 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 12px;
 }
 .layer-row > button:not(.layer-select) {
   padding: 5px;
@@ -603,7 +603,7 @@ dialog label {
 }
 #new-form select { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
 #swap-dimensions { border-color: var(--line); margin: -4px 0 10px; }
-#preset-note { font-size: 11px; line-height: 1.5; margin-bottom: 16px; }
+#preset-note { font-size: 12px; line-height: 1.5; margin-bottom: 16px; }
 dialog .field-grid label {
   margin: 0 0 16px;
 }
@@ -624,7 +624,7 @@ dialog .field-grid label {
   margin-top: 8px;
 }
 .dialog-actions button {
-  font-size: 11px;
+  font-size: 12px;
 }
 .dialog-actions button:first-child:not(:last-child) {
   margin-right: auto;
@@ -660,7 +660,7 @@ dialog .field-grid label {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 13px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .shortcuts dt {
   color: var(--muted);
@@ -937,7 +937,7 @@ dialog .field-grid label {
 .inspector-empty {
   margin: 18px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -988,7 +988,7 @@ dialog .field-grid label {
 }
 #selection-hint {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   padding: 0 8px;
 }
 #selection-hint:empty {
