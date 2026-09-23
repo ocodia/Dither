@@ -16,7 +16,7 @@ async function pixel(x,y){return page.locator('#artwork').evaluate((c,[x,y])=>[.
 async function committed(n){await page.waitForFunction(n=>document.querySelectorAll('[data-history-state]').length===n,n);await ready();}
 try{
   await page.goto(process.env.DITHER_URL||'http://127.0.0.1:4173/');await page.locator('#new-dialog [data-close]').click();await ready();
-  await key('b');await page.locator('[data-tool-action=new-paint]').click();await committed(2);
+  await page.locator('[data-action=new-layer]').click();await committed(2);await key('b');
   await page.locator('[data-setting=foreground]').fill('#ff0000');await page.locator('[data-setting=size]').fill('50');await page.locator('[data-setting=size]').press('Tab');
   const n=await historyCount();await drag(.3,.5,.7,.5);await committed(n+1);assert.deepEqual(await pixel(.5,.5),[255,0,0,255]);
   await key('Control+z');assert.equal((await pixel(.5,.5))[3],0);await key('Control+Shift+z');assert.equal((await pixel(.5,.5))[0],255);
@@ -34,7 +34,7 @@ try{
   await page.locator('[data-setting=gradientType]').selectOption('radial');await ready();await page.locator('[data-tool-action=add-stop]').click();await ready();assert.equal(await page.locator('[data-vector=stop-index] option').count(),3);
   await page.locator('[data-stop=colour]').fill('#ff00ff');await ready();
   await key('p');await page.locator('[data-tool-action=new-path]').click();await click(.2,.4);await drag(.5,.65,.55,.55);await click(.75,.45);await key('Enter');
-  assert.equal(await page.locator('[data-path=name]').inputValue(),'Path');assert.equal(await page.locator('[data-vector=anchor-index] option').count(),3);
+  assert.equal(await page.locator('[data-path=name]').inputValue(),'Path');assert.equal(await page.locator('[data-anchor-handle=point]').count(),3);
   const idleHistory=await historyCount();await page.locator('[data-anchor-handle=point]').first().click();await ready();assert.equal(await historyCount(),idleHistory);
   const h=await historyCount();const handle=page.locator('[data-anchor-handle=point]').nth(1),box=await handle.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+35,box.y+45);await page.mouse.up();await committed(h+1);await key('Control+z');await key('Control+Shift+z');
   await page.locator('[data-tool-action=corner]').first().click();await ready();
@@ -55,9 +55,9 @@ try{
   for(const [name,value] of [['transform.width','800'],['transform.height','500'],['transform.rotation','37']]){await page.locator(`[data-path="${name}"]`).fill(value);await page.locator(`[data-path="${name}"]`).press('Tab');}
   await page.locator('[data-action=flip-x]').click();await key('b');await page.locator('[data-setting=foreground]').fill('#ffff00');
   const transformedHistory=await historyCount();await click(.5,.5);await committed(transformedHistory+1);assert.deepEqual(await pixel(.5,.5),[255,255,0,255]);
-  await page.locator('[data-path=locked]').check();await page.locator('[data-path=locked]').press('Tab');const lockedHistory=await historyCount();await click(.5,.5);assert.equal(await historyCount(),lockedHistory);
+  await page.locator('[data-path=locked]').check();await page.locator('[data-path=locked]').press('Tab');const lockedHistory=await historyCount();await key('b');assert.ok(await page.locator('[data-tool=brush]').isDisabled());assert.equal(await historyCount(),lockedHistory);
   await page.locator('[data-path=locked]').uncheck();await page.locator('[data-path=locked]').press('Tab');
-  await page.getByRole('button',{name:'Hide Paint',exact:true}).click();const hiddenHistory=await historyCount();await click(.5,.5);assert.equal(await historyCount(),hiddenHistory);
+  await page.getByRole('button',{name:'Hide Paint',exact:true}).click();const hiddenHistory=await historyCount();await key('b');assert.ok(await page.locator('[data-tool=brush]').isDisabled());assert.equal(await historyCount(),hiddenHistory);
   await page.getByRole('button',{name:'Show Paint',exact:true}).click();await key('Shift+E');const outsideHistory=await historyCount();await click(.98,.98);assert.equal(await historyCount(),outsideHistory);
   await key('Control+s');await page.getByRole('status').filter({hasText:'Project saved'}).waitFor();
   await page.evaluate(()=>navigator.serviceWorker.ready);await page.context().setOffline(true);await page.reload();await page.locator('#new-dialog [data-close]').click();await key('Control+o');await page.locator('[data-project]').first().click();await page.waitForFunction(()=>document.querySelector('#layer-count').textContent==='3');await ready();

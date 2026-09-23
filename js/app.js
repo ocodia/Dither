@@ -133,7 +133,7 @@ function refresh() {
   $('[data-action=undo]').disabled = !history.undoStack.length; $('[data-action=redo]').disabled = !history.redoStack.length;
   for (const action of ['duplicate', 'delete', 'raise', 'lower']) $(`[data-action=${action}]`).disabled = !layer || layer.locked;
   if (layer) { $('[data-action=raise]').disabled ||= doc.layers.indexOf(layer) === doc.layers.length - 1; $('[data-action=lower]').disabled ||= doc.layers.indexOf(layer) === 0; }
-  workspace.draw(); requestRender();
+  updateToolAvailability(); workspace.draw(); requestRender();
 }
 function collectAssets() {
   assets.collect(doc, history);
@@ -372,7 +372,12 @@ document.addEventListener('click', e => {
     commandPatch(layer, { effects }, 'Reset effect');
   }
 });
+function updateToolAvailability() {
+  for (const tool of ['brush', 'eraser', 'fill']) $(`[data-tool="${tool}"]`).disabled = !toolController.canUse(tool);
+  if (!toolController.canUse(workspace.tool)) setTool('move');
+}
 function setTool(tool) {
+  if (!toolController.canUse(tool)) return;
   workspace.setTool(tool); toolController.renderControls(); updatePixelUI();
   for (const el of document.querySelectorAll('[data-tool]')) el.setAttribute('aria-pressed', el.dataset.tool === tool);
   const toggle = $('#selection-tool-toggle'), option = $(`#selection-tool-menu [data-tool="${tool}"]`);

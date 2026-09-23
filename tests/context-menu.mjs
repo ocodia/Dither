@@ -26,7 +26,7 @@ try {
   await key('Control+z'); assert.equal(await page.locator('#layer-count').textContent(), '2');
   await key('Control+Shift+z'); assert.equal(await page.locator('#layer-count').textContent(), '3');
   await row('Rectangle').click({ button: 'right' }); await option('Rasterise').click();
-  await page.locator('[data-section=image]').waitFor(); await ready();
+  await page.locator('.layer-row.selected .layer-thumb use[href="./icons/ui.svg#image"]').waitFor({state:'attached'}); await ready();
   await row('Rectangle').click({ button: 'right' }); assert.equal(await option('Rasterise').count(), 0);
   await option('Lock layer').click();
   await row('Rectangle').click({ button: 'right' });
@@ -59,7 +59,7 @@ try {
   await page.locator('.document-menu-toggle').click(); await page.locator('[data-action=new]').click();
   await page.getByRole('button', { name: 'Create document' }).click();
   await page.locator('#workspace').click({ button: 'right', position: { x: 8, y: 8 } });
-  await option('Paste layer').click(); await page.locator('[data-section=image]').waitFor(); await ready();
+  await option('Paste layer').click(); await page.locator('.layer-row.selected .layer-thumb use[href="./icons/ui.svg#image"]').waitFor({state:'attached'}); await ready();
   assert.equal(await page.locator('#layer-count').textContent(), '1');
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await key('Control+c');

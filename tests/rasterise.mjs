@@ -51,11 +51,11 @@ try {
     assert.ok(await page.locator('[data-action=rasterise]').isDisabled());
     await page.locator('[data-path=locked]').uncheck(); await page.locator('[data-path=locked]').press('Tab');
     await page.locator('[data-action=rasterise]').click();
-    await page.locator('[data-section=image]').waitFor(); await ready();
+    await page.locator('.layer-row.selected .layer-thumb use[href="./icons/ui.svg#image"]').waitFor({state:'attached'}); await ready();
     assert.equal(await page.locator('[data-action=rasterise]').count(),0);
     await key('Control+z'); assert.ok(await page.locator('[data-action=rasterise]').isVisible());
     if (kind === 'text') { assert.equal(await page.locator('[data-path="text.content"]').inputValue(),'Editable after undo'); assert.equal(await page.locator('[data-path="text.fontFamily"]').inputValue(),'Inter'); }
-    await key('Control+Shift+z'); await page.locator('[data-section=image]').waitFor();
+    await key('Control+Shift+z'); await page.locator('.layer-row.selected .layer-thumb use[href="./icons/ui.svg#image"]').waitFor({state:'attached'});
   }
   assert.equal(await page.locator('#layer-count').textContent(),'5');
   await key('Control+s'); await page.getByRole('status').filter({hasText:'Project saved'}).waitFor();
@@ -76,7 +76,7 @@ try {
   await page.evaluate(()=>window.releaseRasterise());
   await page.getByRole('status').filter({hasText:'layer changed while rasterising'}).waitFor();
   assert.ok(await page.locator('[data-action=rasterise]').isEnabled());
-  assert.equal(await page.locator('[data-section=image]').count(),0);
+  assert.equal(await page.locator('.layer-row.selected .layer-thumb use[href="./icons/ui.svg#image"]').count(),0);
   console.log('PASS stale conversion cancellation');
   assert.deepEqual(errors,[]);
 } finally { await browser.close(); }

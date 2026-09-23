@@ -1017,7 +1017,5 @@ dialog .field-grid label {
 #selection-tool-menu button { display: flex; width: 100%; justify-content: flex-start; padding: 10px; gap: 10px; }
 #selection-tool-menu button[aria-pressed=true] { background: #86acff20; color: var(--accent); border-color: #86acff55; }
 #selection-tool-menu kbd { margin-left: auto; color: var(--muted); font: inherit; font-size: 11px; }
-#layers-panel [data-action=new-layer] { border-color: var(--line); background: #ffffff08; padding: 4px 6px; gap: 4px; }
-#layers-panel [data-action=new-layer] .icon { font-size: 16px; }
 
 .workspace.drawing-tool { cursor: crosshair; }
