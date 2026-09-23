@@ -128,7 +128,7 @@ function updateSaveButton() {
   const draftChanged = edit && Object.keys(edit.before).some(key => JSON.stringify(edit.before[key]) !== JSON.stringify(edit.target[key]));
   $('[data-action=save]').disabled = saving || (hasSaved && !history.dirty && !draftChanged);
 }
-function addLayer(kind, atPointer = false) {
+function addLayer(kind, placement = false) {
   finishEdit(); const layer = createLayer(kind === 'text' ? 'text' : 'shape', doc.canvas);
   if (kind !== 'text') {
     layer.shape.kind = kind; layer.name = kind[0].toUpperCase() + kind.slice(1);
@@ -138,7 +138,8 @@ function addLayer(kind, atPointer = false) {
   const scale = Math.min(1, doc.canvas.width * .65 / layer.transform.width, doc.canvas.height * .65 / layer.transform.height);
   layer.transform.width = Math.max(1, layer.transform.width * scale); layer.transform.height = Math.max(1, layer.transform.height * scale);
   if (kind === 'text') layer.text.fontSize = Math.max(8, Math.round(layer.text.fontSize * scale));
-  if (atPointer && workspace.pointer) Object.assign(layer.transform, workspace.point(workspace.pointer));
+  const position = placement === true ? workspace.pointer && workspace.point(workspace.pointer) : placement;
+  if (position) Object.assign(layer.transform, position);
   selectedId = layer.id; history.execute(insertCommand(doc, layer)); setTab('properties');
 }
 async function importFiles(files) {
@@ -302,6 +303,8 @@ function openContextMenu(e, inPanel, keyboard = false) {
   if (isTyping(e.target)) return;
   e.preventDefault();
   finishEdit(); workspace.finish(); pixelSelection.cancelDraft();
+  // Capture document coordinates before the pointer moves into the menu.
+  const insertionPoint = !inPanel && !keyboard ? workspace.point(e) : false;
   const row = e.target.closest('[data-layer]');
   const layer = inPanel ? doc.layers.find(l => l.id === row?.dataset.layer) : keyboard ? selected() : hitTest(doc.layers, workspace.point(e), 6 / workspace.view.zoom, true);
   selectedId = layer?.id || null;
@@ -320,7 +323,7 @@ function openContextMenu(e, inPanel, keyboard = false) {
       item('Delete layer', actions.delete, locked, true));
   } else {
     items.push(item('Paste layer', pasteLayer, !layerClipboard || layerPasting), null,
-      item('Add text', actions.text), item('Add rectangle', actions.rectangle), item('Import image…', actions.import));
+      item('Add text', () => addLayer('text', insertionPoint)), item('Add rectangle', () => addLayer('rectangle', insertionPoint)), item('Import image…', actions.import));
     if (!inPanel) items.push(null, item('Fit canvas', actions.fit), item('Canvas settings', actions.canvas));
   }
   const returnFocus = () => inPanel && layer ? $(`[data-layer="${layer.id}"] .layer-select`) || $('#workspace') : $('#workspace');

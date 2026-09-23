@@ -70,6 +70,25 @@ try {
   if (process.env.DITHER_SCREENSHOT) await page.screenshot({ path: process.env.DITHER_SCREENSHOT });
   await page.keyboard.press('Delete'); assert.equal(await page.locator('#layer-count').textContent(), '2');
   await page.keyboard.press('Escape');
+  // Menu creation uses the original document point, including after zoom/pan,
+  // rather than the pointer's later position over the menu item.
+  await page.locator('[data-action=zoom-in]').click();
+  const area = await page.locator('#workspace').boundingBox();
+  await page.mouse.move(area.x + 40, area.y + 40);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(area.x + 70, area.y + 60);
+  await page.mouse.up({ button: 'middle' });
+  for (const [label, x, y] of [['Add rectangle', 240, 220], ['Add text', 1200, 750]]) {
+    const canvas = await page.locator('#artwork').boundingBox();
+    const dimensions = await page.locator('#artwork').evaluate(el => [el.width, el.height]);
+    await page.mouse.click(canvas.x + x * canvas.width / dimensions[0], canvas.y + y * canvas.height / dimensions[1], { button: 'right' });
+    await option(label).click();
+    const actualX = Number(await page.locator('[data-path="transform.x"]').inputValue());
+    const actualY = Number(await page.locator('[data-path="transform.y"]').inputValue());
+    assert.ok(Math.abs(actualX - x) < 2, `${label}: x ${actualX}`);
+    assert.ok(Math.abs(actualY - y) < 2, `${label}: y ${actualY}`);
+    await key('Control+z');
+  }
   assert.deepEqual(errors, []);
   console.log('PASS context menus: targeting, clipboard, rasterise, locks, history, keyboard, dismissal, viewport bounds and cross-document image paste');
 } finally { await browser.close(); }
