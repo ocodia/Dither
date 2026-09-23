@@ -179,18 +179,14 @@
         <h1 id="new-title">New document</h1>
         <label>Document name<input name="name" value="Untitled" maxlength="100" required /></label
         ><label
-          >Preset<select name="preset">
-            <option value="1600,1000">Landscape · 1600 × 1000</option>
-            <option value="1920,1080">Full HD · 1920 × 1080</option>
-            <option value="1080,1080">Square · 1080 × 1080</option>
-            <option value="1080,1920">Portrait · 1080 × 1920</option>
-            <option value="custom">Custom size</option>
-          </select></label
+          >Document size<select name="preset" aria-describedby="preset-note"></select></label
         >
         <div class="field-grid">
-          <label>Width<input name="width" type="number" min="1" max="8192" value="1600" required /></label
-          ><label>Height<input name="height" type="number" min="1" max="8192" value="1000" required /></label>
+          <label>Width (px)<input name="width" type="number" min="1" max="8192" value="1600" required /></label
+          ><label>Height (px)<input name="height" type="number" min="1" max="8192" value="1000" required /></label>
         </div>
+        <button type="button" id="swap-dimensions">Swap dimensions</button>
+        <p id="preset-note" class="property-note" aria-live="polite"></p>
         <div class="field-grid">
           <label
             >Background<select name="background">

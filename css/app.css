@@ -601,6 +601,9 @@ dialog p {
 dialog label {
   margin-bottom: 16px;
 }
+#new-form select { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+#swap-dimensions { border-color: var(--line); margin: -4px 0 10px; }
+#preset-note { font-size: 11px; line-height: 1.5; margin-bottom: 16px; }
 dialog .field-grid label {
   margin: 0 0 16px;
 }

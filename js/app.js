@@ -8,6 +8,7 @@ import { Workspace } from './interaction/workspace.js';
 import { propertiesHTML, effectsHTML, layersHTML, historyHTML, escapeHTML, icon } from './components/panels.js';
 import { setupPanelResizer } from './components/panel-resizer.js';
 import { ContextMenu } from './components/context-menu.js';
+import { setupDocumentPresets } from './components/document-presets.js';
 import { PixelSelection } from './interaction/pixel-selection.js';
 import { isSelectionTool } from './model/pixel-region.js';
 import { localToWorld, hitTest } from './interaction/geometry.js';
@@ -410,8 +411,7 @@ document.addEventListener('paste', async e => {
   else if (layerClipboard && (!e.clipboardData?.getData('text/plain') || e.clipboardData.getData('text/plain') === layerClipboard.token)) { e.preventDefault(); await pasteLayer(); }
 });
 const form = $('#new-form');
-form.elements.preset.addEventListener('change', e => { if (e.target.value !== 'custom') [form.elements.width.value, form.elements.height.value] = e.target.value.split(','); });
-for (const key of ['width','height']) form.elements[key].addEventListener('input', () => { form.elements.preset.value = 'custom'; });
+setupDocumentPresets(form);
 form.elements.background.addEventListener('change', e => { form.elements.colour.disabled = e.target.value === 'transparent'; });
 form.addEventListener('submit', e => {
   e.preventDefault();
