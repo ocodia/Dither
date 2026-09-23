@@ -338,6 +338,23 @@ textarea {
   align-items: center;
   gap: 7px;
 }
+.layer-property-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 13px;
+}
+.rasterise-button {
+  background: var(--field);
+  border: 1px solid #596273;
+  padding: 6px 12px;
+  font-weight: 500;
+}
+.rasterise-button:hover:not(:disabled) {
+  background: #343b47;
+  border-color: var(--accent);
+}
 .button-row {
   display: flex;
   gap: 5px;
