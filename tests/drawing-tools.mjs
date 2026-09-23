@@ -32,7 +32,14 @@ try{
   await page.locator('[data-setting=foreground]').fill('#ff0000');await page.locator('[data-setting=size]').fill('50');await page.locator('[data-setting=size]').press('Tab');
   const n=await historyCount();await drag(.3,.5,.7,.5);await committed(n+1);assert.deepEqual(await pixel(.5,.5),[255,0,0,255]);
   await key('Control+z');assert.equal((await pixel(.5,.5))[3],0);await key('Control+Shift+z');assert.equal((await pixel(.5,.5))[0],255);
-  await key('Shift+E');await click(.5,.5);await committed(n+2);assert.equal((await pixel(.5,.5))[3],0);
+  await key('Shift+E');
+  assert.deepEqual(await page.locator('#tool-options label').evaluateAll(els=>els.map(el=>el.textContent.trim().replace(/100%$/, '').trim())),['Opacity','Size (px)','Hardness']);
+  const eraserHistory=await historyCount(),eraserZoom=(await page.locator('#stage').boundingBox()).width,eraserPoint=await point(.5,.5);
+  await page.mouse.move(eraserPoint.x,eraserPoint.y);await page.keyboard.down('Shift');await page.mouse.wheel(0,-100);await page.keyboard.up('Shift');
+  await page.waitForFunction(()=>document.querySelector('[data-setting=size]').value==='55');
+  await page.keyboard.down('Shift');await page.mouse.wheel(0,100);await page.keyboard.up('Shift');await page.waitForFunction(()=>document.querySelector('[data-setting=size]').value==='49');
+  assert.equal((await page.locator('#stage').boundingBox()).width,eraserZoom);assert.equal(await historyCount(),eraserHistory);
+  await click(.5,.5);await committed(n+2);assert.equal((await pixel(.5,.5))[3],0);
   await key('b');await click(.5,.5);await committed(n+3);assert.equal((await pixel(.5,.5))[3],255);
   await key('i');const beforeSample=await historyCount();await click(.4,.5);assert.equal(await page.locator('[data-setting=foreground]').inputValue(),'#ff0000');assert.equal(await historyCount(),beforeSample);
   await key('f');await page.locator('[data-setting=foreground]').fill('#0000ff');await click(.5,.8);await committed(beforeSample+1);assert.deepEqual(await pixel(.5,.8),[0,0,255,255]);assert.deepEqual(await pixel(.4,.5),[255,0,0,255]);

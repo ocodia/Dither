@@ -32,7 +32,7 @@ export class ToolController {
     const area=workspace.element;
     for(const type of ['pointerdown','pointermove','pointerup','pointercancel','lostpointercapture','dblclick'])area.addEventListener(type,e=>this.route(type,e),true);
     area.addEventListener('keydown',e=>this.gradientKey(e),true);
-    area.addEventListener('wheel',e=>this.brushWheel(e),{capture:true,passive:false});
+    area.addEventListener('wheel',e=>this.strokeSizeWheel(e),{capture:true,passive:false});
     this.controls.addEventListener('keydown',e=>{if(e.key==='Escape'&&this.controls.querySelector(':popover-open')){e.preventDefault();e.stopPropagation();this.finishGradientEdit(false);this.controls.querySelector(':popover-open')?.hidePopover();this.renderControls();}});
     area.addEventListener('pointerleave',()=>{this.cursor=null;workspace.draw();});
     this.controls.addEventListener('change',e=>this.change(e));
@@ -47,12 +47,12 @@ export class ToolController {
     document.addEventListener('click',e=>this.action(e));
     window.addEventListener('blur',()=>this.cancel());
   }
-  brushWheel(e){
-    if(this.workspace.tool!=='brush'||!e.shiftKey||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('#tool-options,button,input,select,textarea,[contenteditable]'))return;
+  strokeSizeWheel(e){
+    if(!['brush','eraser'].includes(this.workspace.tool)||!e.shiftKey||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('#tool-options,button,input,select,textarea,[contenteditable]'))return;
     // Shift-wheel can arrive as horizontal scrolling on some platforms.
     const delta=e.deltaY||e.deltaX;if(!delta)return;
     e.preventDefault();e.stopImmediatePropagation();
-    if(this.gesture||this.busy||this.workspace.gesture||!this.canUse('brush'))return;
+    if(this.gesture||this.busy||this.workspace.gesture||!this.canUse(this.workspace.tool))return;
     const step=Math.max(1,Math.round(this.settings.size*.1));
     this.settings.size=Math.max(1,Math.min(1024,Math.round(this.settings.size)+(delta<0?step:-step)));
     this.cursor=this.workspace.point(e);
@@ -93,7 +93,7 @@ export class ToolController {
       const disabled=target&&(target.locked||!target.visible);
       html+=`<fieldset class="pen-style-options" aria-label="Fill" ${disabled?'disabled':''}><label>Fill<input aria-label="Path fill colour" data-pen-style="fill" type="color" value="${style.fill}"></label>${slider('Opacity','fillOpacity',style.fillOpacity,0,1,.01,'pen-style','Fill opacity')}</fieldset><fieldset class="pen-style-options pen-stroke-options" aria-label="Stroke" ${disabled?'disabled':''}><label>Stroke<input aria-label="Path stroke colour" data-pen-style="stroke" type="color" value="${style.stroke}"></label>${slider('Width','strokeWidth',style.strokeWidth,0,100,1,'pen-style','Stroke width')}${slider('Opacity','strokeOpacity',style.strokeOpacity,0,1,.01,'pen-style','Stroke opacity')}</fieldset>`;
     }else if(tool==='brush')html+=`<label>Colour<input aria-label="Brush colour" data-setting="foreground" type="color" value="${s.foreground}"></label>`;
-    else if(tool!=='gradient')html+=`<label>Foreground<input aria-label="Foreground colour" data-setting="foreground" type="color" value="${s.foreground}"></label><label>Background<input aria-label="Background colour" data-setting="background" type="color" value="${s.background}"></label>`;
+    else if(!['gradient','eraser'].includes(tool))html+=`<label>Foreground<input aria-label="Foreground colour" data-setting="foreground" type="color" value="${s.foreground}"></label><label>Background<input aria-label="Background colour" data-setting="background" type="color" value="${s.background}"></label>`;
     if(['eraser','fill','eyedropper'].includes(tool))html+=slider('Opacity','opacity',s.opacity,0,1,.01);
     if(['brush','eraser'].includes(tool))html+=field('Size (px)','size',s.size,1,1024)+slider('Hardness','hardness',s.hardness,0,1,.01);
     if(tool==='fill')html+=slider('Tolerance','tolerance',s.tolerance,0,255);
