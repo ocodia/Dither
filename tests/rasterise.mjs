@@ -16,17 +16,19 @@ try {
     const { createEffect } = await import('./js/model/effects.js');
     const { AssetStore } = await import('./js/storage/assets.js');
     const results = [];
-    for (const kind of ['rectangle', 'ellipse', 'line', 'arrow']) {
+    for (const kind of ['rectangle', 'ellipse', 'line', 'arrow', 'text']) {
       const doc = createDocument({ width:400, height:400 }), assets = new AssetStore(), renderer = new DocumentRenderer();
-      const layer = createLayer('shape', doc.canvas); layer.shape.kind = kind;
-      Object.assign(layer.shape, { strokeWidth:12, strokeOpacity:.7, fillOpacity:.6, arrowSize:35, startArrow:true, endArrow:true });
+      const layer = createLayer(kind === 'text' ? 'text' : 'shape', doc.canvas);
+      if (kind === 'text') Object.assign(layer.text, { content:'Rasterise text', fontFamily:'Noto Sans', fontStyle:'italic', fontSize:25, letterSpacing:.5 });
+      else layer.shape.kind = kind;
+      if (layer.shape) Object.assign(layer.shape, { strokeWidth:12, strokeOpacity:.7, fillOpacity:.6, arrowSize:35, startArrow:true, endArrow:true });
       Object.assign(layer.transform, { width:120.3, height:85.7, rotation:37, flipX:true, flipY:true }); layer.opacity = .65;
       layer.effects = [{ ...createEffect('drop-shadow'), enabled:true, blur:4, offsetX:15, offsetY:-7 }, { ...createEffect('stroke'), enabled:true, width:3 }];
       doc.layers = [layer];
       const before = document.createElement('canvas'); await renderer.renderDocument(doc, assets, before);
       const { blob, transform } = await renderer.rasteriseLayer(layer, assets);
       const meta = await assets.add(blob); doc.assets.push(meta);
-      const image = { ...layer, type:'image', assetId:meta.id, transform, effects:[] }; delete image.shape; doc.layers = [image]; validateDocument(doc);
+      const image = { ...layer, type:'image', assetId:meta.id, transform, effects:[] }; delete image.shape; delete image.text; doc.layers = [image]; validateDocument(doc);
       const after = document.createElement('canvas'); await renderer.renderDocument(doc, assets, after);
       const a = before.getContext('2d').getImageData(0,0,400,400).data, b = after.getContext('2d').getImageData(0,0,400,400).data;
       // Ignore RGB noise in almost-transparent edge pixels from PNG premultiplication.
@@ -38,8 +40,13 @@ try {
   });
   for (const check of checks) { assert.ok(check.maxAlpha <= 2, JSON.stringify(check)); assert.ok(check.maxColour <= 8, JSON.stringify(check)); }
   console.log('PASS raster pixel appearance with fractional sizes, rotation, flips, opacity, strokes, arrowheads and effects', checks);
-  for (const kind of ['rectangle', 'ellipse', 'line', 'arrow']) {
+  for (const kind of ['rectangle', 'ellipse', 'line', 'arrow', 'text']) {
     await page.locator(`[data-action=${kind}]`).click();
+    if (kind === 'text') {
+      await page.locator('[data-path="text.fontFamily"]').selectOption('Inter');
+      await page.locator('[data-path="text.content"]').fill('Editable after undo');
+      await page.locator('[data-path="text.content"]').press('Tab');
+    }
     await page.locator('[data-path=locked]').check(); await page.locator('[data-path=locked]').press('Tab');
     assert.ok(await page.locator('[data-action=rasterise]').isDisabled());
     await page.locator('[data-path=locked]').uncheck(); await page.locator('[data-path=locked]').press('Tab');
@@ -47,18 +54,18 @@ try {
     await page.locator('[data-section=image]').waitFor(); await ready();
     assert.equal(await page.locator('[data-action=rasterise]').count(),0);
     await key('Control+z'); assert.ok(await page.locator('[data-action=rasterise]').isVisible());
+    if (kind === 'text') { assert.equal(await page.locator('[data-path="text.content"]').inputValue(),'Editable after undo'); assert.equal(await page.locator('[data-path="text.fontFamily"]').inputValue(),'Inter'); }
     await key('Control+Shift+z'); await page.locator('[data-section=image]').waitFor();
   }
-  assert.equal(await page.locator('#layer-count').textContent(),'4');
+  assert.equal(await page.locator('#layer-count').textContent(),'5');
   await key('Control+s'); await page.getByRole('status').filter({hasText:'Project saved'}).waitFor();
   const saved = await page.evaluate(async () => {
     const {listProjects,loadProject}=await import('./js/storage/projects.js');
     const loaded=await loadProject((await listProjects())[0].id);
     const result={names:loaded.doc.layers.map(l=>l.name),types:loaded.doc.layers.map(l=>l.type),assets:loaded.assets.images.size}; loaded.assets.dispose(); return result;
   });
-  assert.deepEqual(saved.names,['Rectangle','Ellipse','Line','Arrow']); assert.deepEqual(saved.types,['image','image','image','image']); assert.equal(saved.assets,4);
-  console.log('PASS all shape buttons, locked layers, undo/redo, layer order and saved image assets');
-  await page.locator('[data-action=text]').click(); assert.equal(await page.locator('[data-action=rasterise]').count(),0);
+  assert.deepEqual(saved.names,['Rectangle','Ellipse','Line','Arrow','Text']); assert.deepEqual(saved.types,['image','image','image','image','image']); assert.equal(saved.assets,5);
+  console.log('PASS shape and text buttons, locked layers, undo/redo, layer order and saved image assets');
   await page.locator('[data-action=rectangle]').click();
   await page.evaluate(async () => {
     const {DocumentRenderer}=await import('./js/rendering/renderer.js'); const original=DocumentRenderer.prototype.rasteriseLayer;
@@ -70,6 +77,6 @@ try {
   await page.getByRole('status').filter({hasText:'layer changed while rasterising'}).waitFor();
   assert.ok(await page.locator('[data-action=rasterise]').isEnabled());
   assert.equal(await page.locator('[data-section=image]').count(),0);
-  console.log('PASS text exclusion and stale conversion cancellation');
+  console.log('PASS stale conversion cancellation');
   assert.deepEqual(errors,[]);
 } finally { await browser.close(); }

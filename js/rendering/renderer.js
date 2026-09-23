@@ -18,9 +18,10 @@ export function textLines(ctx, text, width, spacing) {
   }
   return lines;
 }
+const textFont = text => `${text.fontStyle} ${text.fontWeight} ${text.fontSize}px ${JSON.stringify(text.fontFamily === 'Noto' ? 'Noto Sans' : text.fontFamily)}, Inter, sans-serif`;
 function drawText(ctx, layer) {
   const t = layer.text, { width, height } = layer.transform;
-  ctx.font = `${t.fontStyle} ${t.fontWeight} ${t.fontSize}px "${t.fontFamily.replaceAll('"', '')}"`;
+  ctx.font = textFont(t);
   ctx.fillStyle = t.colour; ctx.textBaseline = 'top';
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, width, height); ctx.clip();
   const lines = textLines(ctx, t.content, width, t.letterSpacing);
@@ -72,7 +73,11 @@ export class DocumentRenderer {
       ctx.translate(padding, padding);
       if (layer.type === 'image') { const image = assets.images.get(layer.assetId); if (!image) throw new Error(`Missing original image for ${layer.name}.`); ctx.drawImage(image, 0, 0, width, height); }
       if (layer.type === 'image') applyErasures(ctx, layer.eraseRegions, width, height);
-      if (layer.type === 'text') drawText(ctx, layer);
+      if (layer.type === 'text') {
+        // Canvas does not wait for web fonts: load before measuring, drawing or caching.
+        await document.fonts.load(textFont(layer.text), layer.text.content || ' ');
+        drawText(ctx, layer);
+      }
       if (layer.type === 'shape') drawShape(ctx, layer);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       return { canvas: await applyEffects(canvas, layer.effects), padding };
@@ -94,7 +99,7 @@ export class DocumentRenderer {
     }
   }
   async rasteriseLayer(layer, assets) {
-    if (layer.type !== 'shape') throw new Error('Select a shape, line or arrow to rasterise.');
+    if (!['shape', 'text'].includes(layer.type)) throw new Error('Select a text, shape, line or arrow layer to rasterise.');
     const { canvas, padding } = await this.renderLayer(layer, assets);
     checkSize(canvas.width, canvas.height);
     const t = layer.transform;

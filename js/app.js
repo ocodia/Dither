@@ -151,7 +151,7 @@ async function importFiles(files) {
 async function rasterise() {
   finishEdit(); workspace.finish();
   const source = selected();
-  if (rasterising || !source || source.locked || source.type !== 'shape') return;
+  if (rasterising || !source || source.locked || !['shape', 'text'].includes(source.type)) return;
   const snapshot = clone(source), epoch = documentEpoch, destination = assets, document = doc;
   const unchanged = () => epoch === documentEpoch && doc.layers.includes(source) && JSON.stringify(source) === JSON.stringify(snapshot);
   rasterising = true; refresh();
@@ -163,13 +163,13 @@ async function rasterise() {
     if (!unchanged()) throw new Error('The layer changed while rasterising. Please try again.');
     meta.name = `${snapshot.name}.png`;
     const image = { ...snapshot, type: 'image', assetId: meta.id, transform, effects: [] };
-    delete image.shape;
+    delete image.shape; delete image.text;
     document.assets.push(meta);
     history.execute({ label: `Rasterise ${source.name}`,
       redo: () => document.layers.splice(document.layers.indexOf(source), 1, image),
       undo: () => document.layers.splice(document.layers.indexOf(image), 1, source) });
     inserted = true;
-    toast('Layer rasterised. Undo restores the editable shape.');
+    toast('Layer rasterised. Undo restores the editable layer.');
   } catch (error) { if (epoch === documentEpoch) toast(error.message, true); }
   finally {
     if (meta && !inserted) { destination.images.get(meta.id)?.close(); destination.images.delete(meta.id); destination.blobs.delete(meta.id); }

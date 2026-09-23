@@ -1,10 +1,31 @@
 const ROOT = new URL('./', import.meta.url);
 const CACHE_PREFIX = `dither-shell-${encodeURIComponent(ROOT.pathname)}-`;
-const CACHE = `${CACHE_PREFIX}v14`;
+const CACHE = `${CACHE_PREFIX}v18`;
 const FILES = [
-  './', 'index.html', 'css/app.css', 'manifest.webmanifest',
+  './', 'index.html', 'css/app.css', 'css/fonts.css', 'manifest.webmanifest',
   'icons/app-icon.svg', 'icons/app-192.png', 'icons/app-512.png', 'icons/app-maskable-512.png',
   'icons/ui.svg',
+  'fonts/Noto Sans/NotoSans-Regular.ttf',
+  'fonts/Noto Sans/NotoSans-Italic.ttf',
+  'fonts/Noto Sans/NotoSans-Medium.ttf',
+  'fonts/Noto Sans/NotoSans-MediumItalic.ttf',
+  'fonts/Noto Sans/NotoSans-Bold.ttf',
+  'fonts/Noto Sans/NotoSans-BoldItalic.ttf',
+  'fonts/Noto Sans/NotoSans-Black.ttf',
+  'fonts/Noto Sans/NotoSans-BlackItalic.ttf',
+  'fonts/Inter/Inter_18pt-Regular.ttf',
+  'fonts/Inter/Inter_18pt-Italic.ttf',
+  'fonts/Inter/Inter_18pt-Medium.ttf',
+  'fonts/Inter/Inter_18pt-MediumItalic.ttf',
+  'fonts/Inter/Inter_18pt-SemiBold.ttf',
+  'fonts/Inter/Inter_18pt-SemiBoldItalic.ttf',
+  'fonts/Inter/Inter_18pt-Bold.ttf',
+  'fonts/Inter/Inter_18pt-BoldItalic.ttf',
+  'fonts/Inter/Inter_18pt-Black.ttf',
+  'fonts/Inter/Inter_18pt-BlackItalic.ttf',
+  'fonts/Noto Emoji/NotoEmoji-Regular.ttf',
+  'fonts/Noto Emoji/NotoEmoji-Medium.ttf',
+  'fonts/Noto Emoji/NotoEmoji-Bold.ttf',
   'js/app.js', 'js/model/document.js', 'js/model/effects.js', 'js/model/line.js',
   'js/model/pixel-region.js', 'js/interaction/pixel-selection.js', 'js/rendering/image-pixels.js',
   'js/history/history.js', 'js/storage/assets.js', 'js/storage/projects.js',

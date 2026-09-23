@@ -21,9 +21,9 @@ To deploy on GitHub Pages, publish the directory as static files. All app, icon,
 - Rectangular/elliptical marquees and freehand/polygonal lassos on image layers, with undoable pixel deletion, copy, cut and paste as a new image layer.
 - Ordered image, text, rectangle, ellipse, line and arrow layers. Select on canvas or in the layer list; rename, duplicate, delete, reorder, hide, lock and set opacity.
 - Move, eight resize handles, rotation and flips. Shift preserves proportions/snaps rotation; Alt/Option resizes from the centre. Numeric transform controls provide keyboard-accessible alternatives.
-- Editable text content, font, weight/style, colour, alignment, line height, letter spacing and wrapping within a text box.
+- Editable text content, font, weight/style, colour, alignment, line height, letter spacing and wrapping within a text box. Bundled Inter, Noto Sans and Noto Emoji options work offline; the app UI uses Inter. Older projects using the Noto option now render with Noto Sans.
 - Editable shape fill, stroke and opacity, rectangle corners and configurable arrowheads.
-- Rasterise rectangles, ellipses, lines and arrows from Properties into image layers, baking current effects while preserving appearance and stacking order. Undo restores the editable shape during the session.
+- Rasterise text, rectangles, ellipses, lines and arrows from Properties into image layers, baking current effects while preserving appearance and stacking order. Undo restores the editable layer during the session.
 - Brightness, contrast, monochrome Floyd–Steinberg dithering, colour overlay, outside stroke, blur and drop shadow. Each effect can be enabled, configured and reset independently.
 - Command-based undo/redo, including one entry per pointer gesture, slider gesture or committed text edit.
 - Explicit browser-local project saves and reopening with original image Blobs stored separately; full-resolution transparent PNG export.
@@ -97,6 +97,7 @@ node tests/editor-ui.mjs
 node tests/line-editing.mjs
 node tests/pixel-selection.mjs
 node tests/rasterise.mjs
+node tests/fonts.mjs
 ```
 
 Start the static server first. `DITHER_URL` can target a subdirectory deployment (include the trailing slash); `DITHER_BROWSER` overrides the default `msedge` channel. Each integration run uses a fresh temporary browser profile and writes screenshots and a PNG to `.test-results/`.
@@ -107,7 +108,7 @@ The integration suite exercises image import, native pointer transforms, modifie
 
 - Verified in current desktop Chromium/Edge. Safari, Firefox, touch-only editing and actual operating-system installation still need separate manual coverage.
 - PNG export and monochrome Floyd–Steinberg only. Effect order is stored and honoured but cannot yet be reordered in the UI. Stroke has square joins and outside placement only.
-- One selected layer at a time; selection uses object bounds, including transparent image areas, except lines/arrows which are selected near their stroke and heads. Text uses installed fonts rather than embedded font files. The initial UI offers six font families.
+- One selected layer at a time; selection uses object bounds, including transparent image areas, except lines/arrows which are selected near their stroke and heads. The six system font options depend on installed fonts; Inter, Noto Sans and Noto Emoji are bundled.
 - Pixel selection supports one region on one image layer at a time. Selection union/subtraction, feathering, inverse selection, selection movement and general mask editing are not implemented. Freehand paths are limited to 4096 samples; ellipses use 128 segments. Copied regions are limited to 40 million source pixels. Cropped dimensions below one document pixel use the layer's existing one-pixel minimum. Erasures can be reversed through session history; there is no mask-restoration UI after reopening.
 - No autosave, portable `.dither` container, project deletion UI, grouping, pixel painting, blend modes or advanced colour management.
 - Large documents can still consume substantial memory. Full-resolution compositing and browser-native blur are main-thread operations. Layer caches currently have no global memory budget; worker errors are surfaced and later processing falls back to the main thread.
