@@ -111,7 +111,7 @@ function refresh() {
   $('#effect-count').textContent = layer?.effects.filter(e => e.enabled).length || 0;
   $('#history').innerHTML = historyHTML(history, hasSaved);
   updateSaveButton();
-  document.title = `${history.dirty ? '• ' : ''}${doc.name} — Dither`;
+  document.title = `${history.dirty ? ' ' : ''}${doc.name} — Dither`;
   $('[data-action=undo]').disabled = !history.undoStack.length; $('[data-action=redo]').disabled = !history.redoStack.length;
   for (const action of ['duplicate', 'delete', 'raise', 'lower']) $(`[data-action=${action}]`).disabled = !layer || layer.locked;
   if (layer) { $('[data-action=raise]').disabled ||= doc.layers.indexOf(layer) === doc.layers.length - 1; $('[data-action=lower]').disabled ||= doc.layers.indexOf(layer) === 0; }
