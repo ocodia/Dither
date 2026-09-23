@@ -370,13 +370,18 @@ textarea {
   gap: 12px;
   margin-top: 13px;
 }
-.rasterise-button {
+.property-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.property-action-buttons button {
   background: var(--field);
   border: 1px solid #596273;
   padding: 6px 12px;
   font-weight: 500;
 }
-.rasterise-button:hover:not(:disabled) {
+.property-action-buttons button:hover:not(:disabled) {
   background: #343b47;
   border-color: var(--accent);
 }

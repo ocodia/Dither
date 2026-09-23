@@ -12,15 +12,24 @@ export function propertiesHTML(doc, layer, collapsed = new Set()) {
   const group = (key, title, html) => `<details class="property-section" data-section="${key}" ${collapsed.has(key) ? '' : 'open'}><summary class="section-heading"><span>${title}</span>${icon('chevron-down')}</summary><div class="property-body">${html}</div></details>`;
   if (!layer) return group("canvas", "Canvas", `<label class="field-full">Project name<input id="project-name" data-path="name" type="text" value="${escapeHTML(doc.name)}" maxlength="100"></label><div class="field-grid">${num('Width', 'canvas.width', doc.canvas.width, 1, 8192)}${num('Height', 'canvas.height', doc.canvas.height, 1, 8192)}</div><div class="field-full">${check('Transparent background', 'transparent', doc.canvas.background === null)}</div>${field('Background colour', 'canvas.background', doc.canvas.background || '#ffffff', 'color')}`);
   const t = layer.transform;
-  let html = section(`${field('Layer name', 'name', layer.name, 'text', 'maxlength="100"')}<div class="layer-property-actions">${check('Lock layer', 'locked', layer.locked)}${['shape', 'text'].includes(layer.type) ? `<button type="button" class="rasterise-button" data-action="rasterise" title="Convert to an image, including current effects. Undo restores the editable layer." ${layer.locked ? 'disabled' : ''}>${icon('image')}<span>Rasterise</span></button>` : ''}</div>`);
+  let html = section(`${field('Layer name', 'name', layer.name, 'text', 'maxlength="100"')}<div class="layer-property-actions">${check('Lock layer', 'locked', layer.locked)}</div>`);
   html += `<fieldset ${layer.locked ? 'disabled' : ''} style="border:0;padding:0;margin:0;min-width:0">`;
+  if (['shape', 'text'].includes(layer.type)) {
+    const action = (attribute, label, glyph) => `<button type="button" ${attribute}>${icon(glyph)}<span>${label}</span></button>`;
+    let actions = '';
+    if (layer.shape?.kind === 'path') actions += action('data-tool="pen"', 'Edit path anchors', 'pen') + action('data-tool-action="smooth"', 'Smooth anchor', 'bezier-curve') + action('data-tool-action="corner"', 'Corner anchor', 'square');
+    if (['rectangle','ellipse'].includes(layer.shape?.kind) || layer.shape?.kind === 'path' && layer.shape.closed) {
+      actions += action('data-tool="gradient"', 'Edit gradient fill', 'color-background');
+      if (layer.shape.gradient) actions += action('data-tool-action="solid"', 'Use solid fill', 'paint-bucket');
+    }
+    actions += action('class="rasterise-button" data-action="rasterise" title="Convert to an image, including current effects. Undo restores the editable layer."', 'Rasterise', 'image');
+    html += section(`<div class="property-action-buttons" role="group" aria-label="Layer actions">${actions}</div>`);
+  }
   if (layer.type === 'text') {
     const p = layer.text;
     html += group("typography", "Typography", `<label>Content<textarea data-path="text.content" spellcheck="false">${escapeHTML(p.content)}</textarea></label><div class="field-full">${select('Font family', 'text.fontFamily', p.fontFamily === 'Noto' ? 'Noto Sans' : p.fontFamily, [['Arial','Arial'],['Courier New','Courier New'],['Georgia','Georgia'],['Inter','Inter'],['Noto Emoji','Noto Emoji'],['Noto Sans','Noto Sans'],['Times New Roman','Times New Roman'],['Trebuchet MS','Trebuchet MS'],['Verdana','Verdana']])}</div><div class="field-grid">${num('Size', 'text.fontSize', p.fontSize, 1, 600)}${select('Weight', 'text.fontWeight', p.fontWeight, [['400','Regular'],['500','Medium'],['700','Bold'],['900','Heavy']])}${select('Style', 'text.fontStyle', p.fontStyle, [['normal','Normal'],['italic','Italic']])}${select('Alignment', 'text.align', p.align, [['left','Left'],['center','Centre'],['right','Right']])}${num('Line height', 'text.lineHeight', p.lineHeight, 0.5, 4, 0.05)}${num('Letter spacing', 'text.letterSpacing', p.letterSpacing, -10, 50, 0.1)}${field('Text colour', 'text.colour', p.colour, 'color')}</div><p class="property-note">Text wraps inside its box. Resize the box to reveal overflowing lines.</p>`);
   }
   if (layer.type === 'shape') {
-    if (layer.shape.kind === 'path') html += section('<button data-tool="pen">Edit path anchors</button><button data-tool-action="smooth">Smooth anchor</button><button data-tool-action="corner">Corner anchor</button>');
-    if (['rectangle','ellipse'].includes(layer.shape.kind) || layer.shape.kind === 'path' && layer.shape.closed) html += section('<button data-tool="gradient">Edit gradient fill</button>' + (layer.shape.gradient ? '<button data-tool-action="solid">Use solid fill</button>' : ''));
     const s = layer.shape, isLine = ['line', 'arrow'].includes(s.kind);
     html += group("shape", s.kind, `<div class="field-grid">${isLine ? '' : field('Fill', 'shape.fill', s.fill, 'color') + num('Fill opacity', 'shape.fillOpacity', s.fillOpacity, 0, 1, 0.01)}${field('Stroke', 'shape.stroke', s.stroke, 'color')}${num('Stroke width', 'shape.strokeWidth', s.strokeWidth, 0, 100)}${num('Stroke opacity', 'shape.strokeOpacity', s.strokeOpacity, 0, 1, 0.01)}${s.kind === 'rectangle' ? num('Corner radius', 'shape.radius', s.radius, 0, 1000) : ''}${s.kind === 'arrow' ? num('Arrowhead size', 'shape.arrowSize', s.arrowSize, 1, 200) + check('Start arrowhead', 'shape.startArrow', s.startArrow) + check('End arrowhead', 'shape.endArrow', s.endArrow) : ''}</div>`);
   }

@@ -17,6 +17,18 @@ async function committed(n){await page.waitForFunction(n=>document.querySelector
 try{
   await page.goto(process.env.DITHER_URL||'http://127.0.0.1:4173/');await page.locator('#new-dialog [data-close]').click();await ready();
   await page.locator('[data-action=new-layer]').click();await committed(2);await key('b');
+  assert.deepEqual(await page.locator('#tool-options label').evaluateAll(els=>els.map(el=>el.textContent.trim().replace(/100%$/, '').trim())),['Colour','Size (px)','Hardness']);
+  const brushHistory=await historyCount(),wheelPoint=await point(.5,.5),zoomBefore=(await page.locator('#stage').boundingBox()).width;
+  await page.mouse.move(wheelPoint.x,wheelPoint.y);await page.keyboard.down('Shift');await page.mouse.wheel(0,-100);await page.keyboard.up('Shift');
+  await page.waitForFunction(()=>document.querySelector('[data-setting=size]').value==='22');
+  assert.equal((await page.locator('#stage').boundingBox()).width,zoomBefore);assert.equal(await historyCount(),brushHistory);
+  await page.keyboard.down('Shift');await page.mouse.wheel(0,100);await page.keyboard.up('Shift');await page.waitForFunction(()=>document.querySelector('[data-setting=size]').value==='20');
+  for(const [size,delta] of [['1',100],['1024',-100]]){
+    await page.locator('[data-setting=size]').fill(size);await page.locator('[data-setting=size]').press('Tab');
+    await page.locator('#artwork').dispatchEvent('wheel',{shiftKey:true,deltaY:delta,clientX:wheelPoint.x,clientY:wheelPoint.y});
+    assert.equal(await page.locator('[data-setting=size]').inputValue(),size);
+  }
+  await page.mouse.wheel(0,-100);await page.waitForFunction(width=>document.querySelector('#stage').getBoundingClientRect().width>width,zoomBefore);await key('Control+0');
   await page.locator('[data-setting=foreground]').fill('#ff0000');await page.locator('[data-setting=size]').fill('50');await page.locator('[data-setting=size]').press('Tab');
   const n=await historyCount();await drag(.3,.5,.7,.5);await committed(n+1);assert.deepEqual(await pixel(.5,.5),[255,0,0,255]);
   await key('Control+z');assert.equal((await pixel(.5,.5))[3],0);await key('Control+Shift+z');assert.equal((await pixel(.5,.5))[0],255);
