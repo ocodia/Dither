@@ -7,9 +7,10 @@ import { DocumentRenderer } from './rendering/renderer.js';
 import { Workspace } from './interaction/workspace.js';
 import { propertiesHTML, effectsHTML, layersHTML, historyHTML, escapeHTML, icon } from './components/panels.js';
 import { setupPanelResizer } from './components/panel-resizer.js';
+import { ContextMenu } from './components/context-menu.js';
 import { PixelSelection } from './interaction/pixel-selection.js';
 import { isSelectionTool } from './model/pixel-region.js';
-import { localToWorld } from './interaction/geometry.js';
+import { localToWorld, hitTest } from './interaction/geometry.js';
 import { extractSelection, matchesClipboard } from './rendering/image-pixels.js';
 
 const $ = selector => document.querySelector(selector);
@@ -19,6 +20,8 @@ const renderer = new DocumentRenderer(), openedEffects = new Set(['dither']), co
 const selected = () => doc.layers.find(l => l.id === selectedId) || null;
 let pixelClipboard = null, pixelBusy = false;
 let rasterising = false;
+let layerClipboard = null, layerPasting = false;
+const contextMenu = new ContextMenu();
 const history = new History(() => refresh());
 const workspace = new Workspace({ element: $('#workspace'), stage: $('#stage'), overlay: $('#overlay'), getDocument: () => doc, getSelected: selected,
   select: id => { finishEdit(); selectedId = id; refresh(); }, preview: () => requestRender(), beforeGesture: () => finishEdit(),
@@ -56,6 +59,7 @@ async function copyPixels(cut = false) {
     const extracted = await extractSelection(snapshot, assets.images.get(source.assetId), points);
     if (epoch !== documentEpoch) return;
     pixelClipboard = { ...extracted, layer: snapshot, documentId: doc.id };
+    layerClipboard = null;
     if (cut) {
       if (!doc.layers.includes(source) || source.locked || JSON.stringify(source) !== JSON.stringify(snapshot)) throw new Error('The image changed while copying. Pixels were copied but not cut.');
       commandPatch(source, { eraseRegions: [...(source.eraseRegions || []), points] }, 'Cut pixels');
@@ -99,6 +103,7 @@ async function render() {
   finally { clearTimeout(timer); $('#processing').hidden = true; rendering = false; if (renderNeeded) requestRender(); else $('#workspace').setAttribute('aria-busy', 'false'); }
 }
 function refresh() {
+  contextMenu.close(false);
   if (!doc.layers.some(l => l.id === selectedId)) selectedId = null;
   pixelSelection.sync(); updatePixelUI();
   const layer = selected();
@@ -106,7 +111,7 @@ function refresh() {
   // Keep the focused control alive so typing and Tab navigation survive a commit.
   if (!edit && !activeField) { $('#properties').innerHTML = propertiesHTML(doc, layer, collapsedProperties); $('#effects').innerHTML = effectsHTML(layer, openedEffects); }
   const rasteriseButton = $('[data-action=rasterise]');
-  if (rasteriseButton) { rasteriseButton.disabled = rasterising || layer.locked; rasteriseButton.textContent = rasterising ? 'Rasterising…' : 'Rasterise'; }
+  if (rasteriseButton) { rasteriseButton.disabled = rasterising || layer.locked; rasteriseButton.querySelector('span').textContent = rasterising ? 'Rasterising…' : 'Rasterise'; }
   $('#layers').innerHTML = layersHTML(doc, selectedId); $('#layer-count').textContent = doc.layers.length;
   $('#effect-count').textContent = layer?.effects.filter(e => e.enabled).length || 0;
   $('#history').innerHTML = historyHTML(history, hasSaved);
@@ -178,6 +183,7 @@ async function rasterise() {
 }
 function canDiscard() { finishEdit(); workspace.finish(); return !history.dirty || window.confirm('Discard unsaved changes to this document? Save first to keep an editable copy.'); }
 function replaceDocument(nextDoc, nextAssets, saved = false) {
+  contextMenu.close(false);
   pixelSelection.clear();
   workspace.finish(true); documentEpoch++; assets.dispose(); assets = nextAssets; doc = nextDoc; hasSaved = saved;
   selectedId = null; edit = null; history.reset(); renderer.clear(); refresh(); workspace.fit();
@@ -259,6 +265,73 @@ const actions = {
   canvas: () => { selectedId = null; collapsedProperties.delete('canvas'); setTab('properties'); refresh(); $('#inspector').classList.add('mobile-open'); },
   panels: () => { $('#inspector').classList.toggle('mobile-open'); }, help: () => $('#help-dialog').showModal()
 };
+async function copyLayer() {
+  finishEdit(); workspace.finish();
+  const layer = selected(); if (!layer) return;
+  layerClipboard = { layer: clone(layer), epoch: documentEpoch, token: `Dither layer ${uid()}`,
+    blob: layer.type === 'image' ? assets.blobs.get(layer.assetId) : null };
+  pixelClipboard = null; updatePixelUI();
+  let systemCopy = false;
+  try { await navigator.clipboard.writeText(layerClipboard.token); systemCopy = true; } catch { /* The context menu still supports local paste. */ }
+  toast(`Layer copied. Use Paste layer${systemCopy ? ' or Ctrl/⌘ V' : ' in the context menu'}.`);
+}
+async function pasteLayer() {
+  if (!layerClipboard || layerPasting) return;
+  finishEdit(); workspace.finish();
+  const clipboard = layerClipboard, epoch = documentEpoch, destination = assets;
+  const layer = clone(clipboard.layer);
+  layerPasting = true;
+  try {
+    if (layer.type === 'image' && clipboard.epoch !== epoch) {
+      const meta = await destination.add(clipboard.blob);
+      if (epoch !== documentEpoch) return;
+      doc.assets.push(meta); layer.assetId = meta.id;
+    }
+    layer.id = uid(); layer.name += ' copy'; layer.locked = false;
+    layer.transform.x += 20; layer.transform.y += 20;
+    layer.effects.forEach(effect => { effect.id = uid(); });
+    const index = selected() ? doc.layers.indexOf(selected()) + 1 : doc.layers.length;
+    selectedId = layer.id; pixelSelection.clear();
+    history.execute({ ...insertCommand(doc, layer, index), label: 'Paste layer' });
+    setTool('move'); setTab('properties');
+  } catch (error) { toast(error.message, true); }
+  finally { layerPasting = false; }
+}
+function openContextMenu(e, inPanel, keyboard = false) {
+  if (isTyping(e.target)) return;
+  e.preventDefault();
+  finishEdit(); workspace.finish(); pixelSelection.cancelDraft();
+  const row = e.target.closest('[data-layer]');
+  const layer = inPanel ? doc.layers.find(l => l.id === row?.dataset.layer) : keyboard ? selected() : hitTest(doc.layers, workspace.point(e), 6 / workspace.view.zoom, true);
+  selectedId = layer?.id || null;
+  document.activeElement?.blur(); refresh();
+  const run = action => () => { finishEdit(); Promise.resolve(action()).catch(error => toast(error.message, true)); };
+  const item = (label, action, disabled = false, danger = false) => ({ label, run: run(action), disabled, danger });
+  const items = [];
+  if (layer) {
+    const locked = layer.locked, index = doc.layers.indexOf(layer);
+    items.push(item('Copy layer', copyLayer), item('Duplicate layer', actions.duplicate, locked));
+    items.push(item('Paste layer', pasteLayer, !layerClipboard || layerPasting), null);
+    if (['shape', 'text'].includes(layer.type)) items.push(item('Rasterise', rasterise, locked || rasterising));
+    items.push(item('Bring forward', actions.raise, locked || index === doc.layers.length - 1), item('Send backward', actions.lower, locked || index === 0), null);
+    items.push(item(layer.visible ? 'Hide layer' : 'Show layer', () => commandPatch(layer, { visible: !layer.visible }, 'Layer visibility')),
+      item(locked ? 'Unlock layer' : 'Lock layer', () => commandPatch(layer, { locked: !layer.locked }, 'Lock layer')), null,
+      item('Delete layer', actions.delete, locked, true));
+  } else {
+    items.push(item('Paste layer', pasteLayer, !layerClipboard || layerPasting), null,
+      item('Add text', actions.text), item('Add rectangle', actions.rectangle), item('Import image…', actions.import));
+    if (!inPanel) items.push(null, item('Fit canvas', actions.fit), item('Canvas settings', actions.canvas));
+  }
+  const returnFocus = () => inPanel && layer ? $(`[data-layer="${layer.id}"] .layer-select`) || $('#workspace') : $('#workspace');
+  const bounds = (returnFocus() || e.currentTarget).getBoundingClientRect();
+  contextMenu.open(keyboard ? bounds.left + 20 : e.clientX, keyboard ? bounds.top + 20 : e.clientY, items, returnFocus);
+}
+for (const [element, inPanel] of [[$('#workspace'), false], [$('#layers'), true]]) {
+  element.addEventListener('contextmenu', e => openContextMenu(e, inPanel));
+  element.addEventListener('keydown', e => {
+    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) openContextMenu(e, inPanel, true);
+  });
+}
 function flip(axis) { const layer = selected(); if (layer && !layer.locked) commandPatch(layer, { transform: { ...layer.transform, [axis]: !layer.transform[axis] } }, 'Flip layer'); }
 function reorder(direction) { const layer = selected(); if (!layer || layer.locked) return; const index = Math.max(0, Math.min(doc.layers.length - 1, doc.layers.indexOf(layer) + direction)); history.execute(orderCommand(doc, layer, index)); }
 document.addEventListener('click', e => {
@@ -334,6 +407,7 @@ document.addEventListener('paste', async e => {
     if (epoch !== documentEpoch) return;
     if (internal && pixelClipboard === clipboard) await pastePixels(); else await importFiles(files);
   } else if (pixelClipboard && !e.clipboardData?.getData('text/plain')) { e.preventDefault(); await pastePixels(); }
+  else if (layerClipboard && (!e.clipboardData?.getData('text/plain') || e.clipboardData.getData('text/plain') === layerClipboard.token)) { e.preventDefault(); await pasteLayer(); }
 });
 const form = $('#new-form');
 form.elements.preset.addEventListener('change', e => { if (e.target.value !== 'custom') [form.elements.width.value, form.elements.height.value] = e.target.value.split(','); });
@@ -364,6 +438,7 @@ document.addEventListener('keydown', e => {
     if (key === 'a' && pixelSelection.eligible()) { e.preventDefault(); pixelSelection.selectAll(); return; }
     if (key === 'd' && pixelSelection.current()) { e.preventDefault(); pixelSelection.clear(); return; }
     if ((key === 'c' || key === 'x') && pixelSelection.current()) { e.preventDefault(); if (!e.repeat) copyPixels(key === 'x'); return; }
+    if (key === 'c' && selected()) { e.preventDefault(); if (!e.repeat) copyLayer(); return; }
     const action = key === 'z' ? e.shiftKey ? 'redo' : 'undo' : key === 'y' ? 'redo' : key === 'd' ? 'duplicate' : key === 'o' ? 'open' : key === '+' || key === '=' ? 'zoom-in' : key === '-' ? 'zoom-out' : key === '0' ? 'fit' : null;
     if (action) { e.preventDefault(); finishEdit(); actions[action](); } return;
   }

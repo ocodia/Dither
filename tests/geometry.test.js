@@ -9,6 +9,8 @@ test('inverse geometry handles arbitrary rotation and flips', () => {
 test('hit test is topmost-first and skips hidden or locked objects', () => {
   const a = { id:'a', visible:true, locked:false, transform:t }, b = { ...a, id:'b' };
   assert.equal(hitTest([a,b], t).id,'b'); b.locked = true; assert.equal(hitTest([a,b],t).id,'a'); a.visible = false; assert.equal(hitTest([a,b],t),null);
+  assert.equal(hitTest([a,b], t, 6, true).id, 'b');
+  b.visible = false; assert.equal(hitTest([a,b], t, 6, true), null);
 });
 test('rotated corner resize fixes the opposite corner', () => {
   const plain = { ...t, flipX:false }, next = resizeTransform(plain, [1,1], { x:45, y:15 });

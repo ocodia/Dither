@@ -1,6 +1,6 @@
 const ROOT = new URL('./', import.meta.url);
 const CACHE_PREFIX = `dither-shell-${encodeURIComponent(ROOT.pathname)}-`;
-const CACHE = `${CACHE_PREFIX}v19`;
+const CACHE = `${CACHE_PREFIX}v21`;
 const FILES = [
   './', 'index.html', 'css/app.css', 'css/fonts.css', 'manifest.webmanifest',
   'icons/app-icon.svg', 'icons/app-192.png', 'icons/app-512.png', 'icons/app-maskable-512.png',
@@ -30,6 +30,7 @@ const FILES = [
   'js/model/pixel-region.js', 'js/interaction/pixel-selection.js', 'js/rendering/image-pixels.js',
   'js/history/history.js', 'js/storage/assets.js', 'js/storage/projects.js',
   'js/interaction/geometry.js', 'js/interaction/workspace.js', 'js/components/panels.js', 'js/components/panel-resizer.js',
+  'js/components/context-menu.js',
   'js/rendering/renderer.js', 'js/rendering/effects.js', 'js/rendering/dither.js',
   'js/rendering/pixels.js', 'js/rendering/pixel-worker.js'
 ];

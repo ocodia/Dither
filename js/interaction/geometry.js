@@ -28,9 +28,9 @@ export function moveLineEndpoint(t, index, point, { shift = false } = {}) {
   const length = originalLength * scale, end = { x: fixed.x + Math.cos(angle) * length, y: fixed.y + Math.sin(angle) * length };
   return { ...t, x: (fixed.x + end.x) / 2, y: (fixed.y + end.y) / 2, width: t.width * scale, height: t.height * scale, rotation: ((t.rotation + (angle - originalAngle) * 180 / Math.PI) % 360 + 360) % 360 };
 }
-export function hitTest(layers, point, tolerance = 6) {
+export function hitTest(layers, point, tolerance = 6, includeLocked = false) {
   return [...layers].reverse().find(layer => {
-    if (!layer.visible || layer.locked) return false;
+    if (!layer.visible || (layer.locked && !includeLocked)) return false;
     const p = worldToLocal(point, layer.transform);
     if (isLineLayer(layer)) {
       const { width: w, height: h } = layer.transform, length = Math.hypot(w, h);
