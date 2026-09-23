@@ -215,34 +215,6 @@ textarea {
 #overlay [data-rotate] {
   cursor: crosshair;
 }
-.empty-tip {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  pointer-events: none;
-  z-index: 1;
-  text-shadow: 0 1px 12px #14171b;
-}
-.empty-tip > .bi {
-  font-size: 33px;
-  color: #66758b;
-  margin-bottom: 4px;
-}
-.empty-tip span {
-  color: var(--muted);
-}
-.empty-tip button {
-  pointer-events: auto;
-  background: #1c2535;
-  color: #abc5ff;
-  font-size: 11px;
-  margin-top: 9px;
-  border: 1px solid #435473;
-}
 .zoom-controls {
   position: absolute;
   bottom: 22px;
@@ -725,11 +697,6 @@ dialog .field-grid label {
   
   
   
-  .empty-tip span {
-    max-width: 180px;
-    text-align: center;
-    font-size: 11px;
-  }
   .tools {
     padding: 12px 3px;
   }

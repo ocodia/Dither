@@ -112,7 +112,7 @@ function refresh() {
   $('[data-action=undo]').disabled = !history.undoStack.length; $('[data-action=redo]').disabled = !history.redoStack.length;
   for (const action of ['duplicate', 'delete', 'raise', 'lower']) $(`[data-action=${action}]`).disabled = !layer || layer.locked;
   if (layer) { $('[data-action=raise]').disabled ||= doc.layers.indexOf(layer) === doc.layers.length - 1; $('[data-action=lower]').disabled ||= doc.layers.indexOf(layer) === 0; }
-  $('#empty-tip').hidden = doc.layers.length > 0; workspace.draw(); requestRender();
+  workspace.draw(); requestRender();
 }
 function commandPatch(target, changes, label) { const before = {}; for (const key of Object.keys(changes)) before[key] = clone(target[key]); history.execute(patchCommand(target, before, changes, label)); }
 function updateSaveButton() {
