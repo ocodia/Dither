@@ -1,4 +1,4 @@
-import { validPath, validGradient, canGradient } from './vector.js';
+import { validPath, validGradient, canGradient, editableStops } from './vector.js';
 import { validRegion } from './pixel-region.js';
 
 export const VERSION = 2;
@@ -29,6 +29,8 @@ export function createLayer(type, canvas, options = {}) {
 export function migrateDocument(value) {
   const doc = clone(value);
   if (doc?.version === 1) doc.version = VERSION;
+  validateDocument(doc);
+  for (const layer of doc.layers) if (layer.shape?.gradient) layer.shape.gradient.stops=editableStops(layer.shape.gradient.stops);
   return validateDocument(doc);
 }
 export function validateDocument(doc) {

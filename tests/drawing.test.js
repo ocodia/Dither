@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDocument, createLayer, migrateDocument, validateDocument } from '../js/model/document.js';
-import { validGradient, pathBounds, validPath } from '../js/model/vector.js';
+import { validGradient, pathBounds, validPath, editableStops, addGradientStop, gradientOffset } from '../js/model/vector.js';
 import { floodFill } from '../js/rendering/flood-fill.js';
 import { strokeSamples, sourcePoint } from '../js/rendering/paint.js';
 import { localToWorld } from '../js/interaction/geometry.js';
@@ -48,4 +48,30 @@ test('asset collection retains current, undo and redo sources and releases disca
   const history={undoStack:[{assetIds:['undo']}],redoStack:[{assetIds:['redo']}]};
   assets.collect(doc,history);assert.deepEqual(closed,['discarded']);assert.equal(assets.blobs.size,3);
   history.redoStack=[];assets.collect(doc,history);assert.deepEqual(closed,['discarded','redo']);assert.deepEqual(doc.assets.map(a=>a.id),['current','undo']);
+});
+
+test('gradient stops retain identities, fixed endpoints and a six-stop editing limit',()=>{
+  const source=[{offset:.2,colour:'#ff0000',opacity:0},{offset:.8,colour:'#0000ff',opacity:1}];
+  const stops=editableStops(source);
+  assert.equal(source.length,2);assert.equal(stops.length,4);
+  assert.deepEqual(stops.filter(s=>s.order<2).map(s=>[s.order,s.offset]),[[0,0],[1,1]]);
+  const added=addGradientStop(stops);assert.equal(added.offset,.5);assert.equal(added.colour,'#800080');assert.equal(added.opacity,.5);
+  added.offset=.9;stops.sort((a,b)=>a.offset-b.offset);
+  assert.deepEqual(editableStops(stops),stops);
+  assert.ok(addGradientStop(stops));assert.equal(stops.length,6);assert.equal(addGradientStop(stops),null);
+  const gradient={type:'linear',start:{x:0,y:0},end:{x:1,y:1},stops};
+  assert.ok(validGradient(gradient));
+  assert.ok(!validGradient({...gradient,stops:stops.map(s=>({...s,order:0}))}));
+  assert.ok(!validGradient({...gradient,stops:stops.map(s=>s.order===1?{...s,offset:.9}:s)}));
+  assert.equal(gradientOffset({x:.5,y:.5},gradient,{width:400,height:100}),.5);
+  assert.equal(gradientOffset({x:2,y:2},gradient,{width:400,height:100}),1);
+  assert.equal(gradientOffset({x:-1,y:-1},gradient,{width:400,height:100}),0);
+});
+test('legacy gradients gain endpoints without losing stops during migration',()=>{
+  const doc=createDocument(),layer=createLayer('shape',doc.canvas);doc.layers.push(layer);
+  layer.shape.gradient={type:'radial',start:{x:0,y:0},end:{x:1,y:1},stops:Array.from({length:32},(_,i)=>({offset:(i+1)/34,colour:'#123456',opacity:.5}))};
+  const loaded=migrateDocument(doc),stops=loaded.layers[0].shape.gradient.stops;
+  assert.equal(stops.length,34);assert.equal(stops[0].offset,0);assert.equal(stops.at(-1).offset,1);
+  assert.deepEqual(stops.slice(1,-1).map(({order,...s})=>s),layer.shape.gradient.stops);
+  assert.equal(validateDocument(loaded),loaded);
 });

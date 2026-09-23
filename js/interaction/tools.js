@@ -1,7 +1,7 @@
 import { icon } from '../components/panels.js';
 import { clone, createLayer, checkSize } from '../model/document.js';
 import { isSelectionTool } from '../model/pixel-region.js';
-import { canGradient, isPath, pathBounds, tracePath, validGradient } from '../model/vector.js';
+import { canGradient, isPath, pathBounds, tracePath, validGradient, editableStops, addGradientStop, gradientOffset } from '../model/vector.js';
 import { localToWorld } from './geometry.js';
 import { sourcePoint, paintSurface, selectionMask, stamp, strokeSamples, composeStroke, pngBlob } from '../rendering/paint.js';
 import { surface } from '../rendering/effects.js';
@@ -25,13 +25,16 @@ export class ToolController {
     this.workspace=workspace;Object.assign(this,options);
     this.settings={foreground:'#000000',background:'#ffffff',opacity:1,size:20,hardness:1,tolerance:0,gradientType:'linear'};
     this.penStyle={fill:'#6799f5',stroke:'#000000',fillOpacity:0,strokeWidth:2,strokeOpacity:1};
-    this.penStyleEdit=null;
+    this.penStyleEdit=null;this.gradientEdit=null;
     this.token=0;this.revision=0;this.anchorIndex=0;this.stopIndex=0;this.gesture=null;this.path=null;this.pathLayer=null;this.cursor=null;this.busy=false;
     const area=workspace.element;
     for(const type of ['pointerdown','pointermove','pointerup','pointercancel','lostpointercapture','dblclick'])area.addEventListener(type,e=>this.route(type,e),true);
+    area.addEventListener('keydown',e=>this.gradientKey(e),true);
+    this.controls.addEventListener('keydown',e=>{if(e.key==='Escape'&&this.controls.querySelector(':popover-open')){e.preventDefault();e.stopPropagation();this.finishGradientEdit(false);this.controls.querySelector(':popover-open')?.hidePopover();this.renderControls();}});
     area.addEventListener('pointerleave',()=>{this.cursor=null;workspace.draw();});
     this.controls.addEventListener('change',e=>this.change(e));
     this.controls.addEventListener('input',e=>{
+      if(e.target.dataset.stop){this.changeStop(e.target,false);}
       if(e.target.dataset.penStyle){this.changePenStyle(e.target,false);}
       if(e.target.type!=='range')return;
       const output=e.target.closest('label').querySelector('output');
@@ -56,7 +59,8 @@ export class ToolController {
     const layer=this.getLayer();
     if(this.pathLayer && (layer!==this.pathLayer || layer.locked || !layer.visible || !this.getDocument().layers.includes(layer)))this.cancel();
     if(this.gesture && (this.gesture.layer && (layer!==this.gesture.layer||layer.locked||!layer.visible)))this.cancel();
-    if(!this.controls.contains(document.activeElement))this.renderControls();
+    if(this.gradientEdit&&(this.gradientEdit.layer!==this.gradientState().layer||this.gradientState().disabled||this.gradientEdit.document!==this.getDocument()))this.finishGradientEdit(false);
+    if(this.controlsLayer!==layer||!this.controls.contains(document.activeElement))this.renderControls();
   }
   canClosePath(){
     const layer=this.penStyleTarget();
@@ -73,7 +77,7 @@ export class ToolController {
       const target=this.penStyleTarget(),style=target?.shape || this.penStyle;
       const disabled=target&&(target.locked||!target.visible);
       html+=`<fieldset class="pen-style-options" aria-label="Fill" ${disabled?'disabled':''}><label>Fill<input aria-label="Path fill colour" data-pen-style="fill" type="color" value="${style.fill}"></label>${slider('Opacity','fillOpacity',style.fillOpacity,0,1,.01,'pen-style','Fill opacity')}</fieldset><fieldset class="pen-style-options pen-stroke-options" aria-label="Stroke" ${disabled?'disabled':''}><label>Stroke<input aria-label="Path stroke colour" data-pen-style="stroke" type="color" value="${style.stroke}"></label>${slider('Width','strokeWidth',style.strokeWidth,0,100,1,'pen-style','Stroke width')}${slider('Opacity','strokeOpacity',style.strokeOpacity,0,1,.01,'pen-style','Stroke opacity')}</fieldset>`;
-    }else html+=`<label>Foreground<input aria-label="Foreground colour" data-setting="foreground" type="color" value="${s.foreground}"></label><label>Background<input aria-label="Background colour" data-setting="background" type="color" value="${s.background}"></label>`;
+    }else if(tool!=='gradient')html+=`<label>Foreground<input aria-label="Foreground colour" data-setting="foreground" type="color" value="${s.foreground}"></label><label>Background<input aria-label="Background colour" data-setting="background" type="color" value="${s.background}"></label>`;
     if(paintTools.includes(tool)||tool==='eyedropper')html+=slider('Opacity','opacity',s.opacity,0,1,.01);
     if(['brush','eraser'].includes(tool))html+=field('Size (px)','size',s.size,1,1024)+slider('Hardness','hardness',s.hardness,0,1,.01);
     if(tool==='fill')html+=slider('Tolerance','tolerance',s.tolerance,0,255);
@@ -86,14 +90,73 @@ export class ToolController {
       if(this.canClosePath())actions+=toolButton('close-shape','Close shape','pentagon');
       if(actions)html+=`<div class="pen-path-actions" role="group" aria-label="Path actions">${actions}</div>`;
     }
-    if(tool==='gradient'){
-      const g=canGradient(l)&&l.shape.gradient;html+=`<label>Type<select data-setting="gradientType"><option value="linear" ${(g?.type||s.gradientType)==='linear'?'selected':''}>Linear</option><option value="radial" ${(g?.type||s.gradientType)==='radial'?'selected':''}>Radial</option></select></label>`;
-      if(g&&!l.locked){this.stopIndex=Math.min(this.stopIndex,g.stops.length-1);const stop=g.stops[this.stopIndex];
-
-        html+=`<label>Stop<select data-vector="stop-index">${g.stops.map((_,i)=>`<option value="${i}" ${i===this.stopIndex?'selected':''}>${i+1}</option>`).join('')}</select></label>${slider('Position','offset',stop.offset,0,1,.01,'stop')}<label>Stop colour<input data-stop="colour" type="color" value="${stop.colour}"></label>${slider('Stop opacity','opacity',stop.opacity,0,1,.01,'stop')}`+toolButton('add-stop','Add stop','add',g.stops.length>=32)+toolButton('remove-stop','Remove stop','subtract',g.stops.length<=2)+toolButton('sample-stop','Pick stop colour','eyedropper');
-      }
+    if(tool==='gradient')html+=this.gradientControls();
+    this.controlsLayer=l;this.controls.innerHTML=html;
+  }
+  gradientState(){
+    const layer=this.getLayer(),g=canGradient(layer)&&layer.shape.gradient;
+    if(!this.gradientDefaults)this.gradientDefaults=editableStops([{offset:0,colour:this.settings.foreground,opacity:this.settings.opacity},{offset:1,colour:this.settings.background,opacity:1}]);
+    return {layer:g?layer:null,stops:g?editableStops(g.stops):clone(this.gradientDefaults),disabled:!!layer&&(layer.locked||!layer.visible)};
+  }
+  gradientControls(){
+    const {layer,stops,disabled}=this.gradientState(),type=layer?.shape.gradient.type||this.settings.gradientType;
+    let html=`<fieldset class="gradient-options" ${disabled?'disabled':''}><label>Type<select aria-label="Gradient type" data-setting="gradientType"><option value="linear" ${type==='linear'?'selected':''}>Linear</option><option value="radial" ${type==='radial'?'selected':''}>Radial</option></select></label><div class="gradient-stops" role="group" aria-label="Gradient stops">`;
+    [...stops].sort((a,b)=>a.order-b.order).forEach((stop,i)=>{
+      const label=`Stop ${i+1}`,id=`gradient-stop-${stop.order}`;
+      html+=`<div class="gradient-stop" data-stop-order="${stop.order}"><span>${label}</span><button type="button" class="gradient-swatch" data-tool-action="edit-stop" aria-label="${label} colour and opacity" aria-haspopup="dialog" aria-controls="${id}" style="--stop-colour:${stop.colour};--stop-opacity:${stop.opacity}"><span></span></button>`;
+      if(stop.order>1)html+=`<button type="button" data-tool-action="remove-stop" aria-label="Remove ${label.toLowerCase()}" title="Remove ${label.toLowerCase()}">${icon('delete')}</button>`;
+      html+=`<div id="${id}" class="gradient-colour-editor" popover role="dialog" aria-label="${label} colour and opacity"><label>Colour<input aria-label="${label} colour" data-stop="colour" type="color" value="${stop.colour}"></label>${slider('Opacity','opacity',stop.opacity,0,1,.01,'stop',label+' opacity')}${toolButton('sample-stop','Pick stop colour','eyedropper')}</div></div>`;
+    });
+    return html+`</div><div class="gradient-add">${toolButton('add-stop','Add stop','add',stops.length>=6)}</div></fieldset>`;
+  }
+  writeStops(stops,label='Edit gradient'){
+    const state=this.gradientState();if(state.disabled)return;
+    if(state.layer){const shape=clone(state.layer.shape);shape.gradient.stops=stops;if(!same(shape,state.layer.shape))this.patch(state.layer,{shape},label);}
+    else this.gradientDefaults=clone(stops);
+  }
+  changeStop(control,commit){
+    const state=this.gradientState();if(state.disabled)return;
+    const order=Number(control.closest('[data-stop-order]').dataset.stopOrder),key=control.dataset.stop;
+    const value=key==='colour'?control.value:Number(control.value);
+    if(key==='colour'?!/^#[\da-f]{6}$/i.test(value):!Number.isFinite(value)||value<0||value>1)return;
+    if(!this.gradientEdit)this.gradientEdit={layer:state.layer,before:state.layer?clone(state.layer.shape):clone(this.gradientDefaults),document:this.getDocument()};
+    const stops=state.stops,stop=stops.find(s=>s.order===order);if(!stop)return;stop[key]=value;
+    if(state.layer)state.layer.shape.gradient.stops=stops;else this.gradientDefaults=stops;
+    this.stopIndex=order;
+    const swatch=control.closest('[data-stop-order]').querySelector('.gradient-swatch');swatch.style.setProperty('--stop-colour',stop.colour);swatch.style.setProperty('--stop-opacity',stop.opacity);
+    this.preview();this.workspace.draw();if(commit)this.finishGradientEdit(true);
+  }
+  finishGradientEdit(commit){
+    const edit=this.gradientEdit;if(!edit)return;this.gradientEdit=null;
+    if(edit.layer){const after=clone(edit.layer.shape);edit.layer.shape=edit.before;
+      if(commit&&edit.document===this.getDocument()&&this.getDocument().layers.includes(edit.layer)&&!edit.layer.locked&&edit.layer.visible&&!same(edit.before,after))this.patch(edit.layer,{shape:after},'Edit gradient colour');
+    }else if(!commit)this.gradientDefaults=edit.before;
+    this.preview();this.workspace.draw();
+  }
+  gradientAction(action,button){
+    if(!['edit-stop','add-stop','remove-stop','sample-stop'].includes(action))return false;
+    const state=this.gradientState();if(state.disabled)return true;
+    const order=Number(button.closest('[data-stop-order]')?.dataset.stopOrder ?? this.stopIndex);
+    this.stopIndex=order;
+    if(action==='edit-stop'){
+      const popover=button.parentElement.querySelector('[popover]'),box=button.getBoundingClientRect();
+      popover.style.left=Math.max(8,Math.min(box.left,window.innerWidth-280))+'px';popover.style.top=Math.min(box.bottom+8,window.innerHeight-160)+'px';popover.showPopover();this.workspace.draw();return true;
     }
-    this.controls.innerHTML=html;
+    if(action==='sample-stop'){
+      this.finishGradientEdit(true);button.closest('[popover]')?.hidePopover();this.sampleTarget={layer:state.layer,order,document:this.getDocument()};this.notify('Click the canvas to sample this stop.');return true;
+    }
+    this.finishGradientEdit(true);
+    if(action==='add-stop'){const added=addGradientStop(state.stops);if(!added)return true;this.stopIndex=added.order;}
+    if(action==='remove-stop'){if(order<2)return true;state.stops=state.stops.filter(s=>s.order!==order);this.stopIndex=0;}
+    this.writeStops(state.stops);this.renderControls();this.workspace.draw();return true;
+  }
+  gradientKey(e){
+    const handle=e.target.closest('[data-gradient-stop]');if(!handle||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;
+    e.preventDefault();e.stopPropagation();const state=this.gradientState();if(state.disabled||!state.layer)return;
+    const order=Number(handle.dataset.gradientStop),stop=state.stops.find(s=>s.order===order);if(!stop||order<2)return;
+    stop.offset=Math.max(0,Math.min(1,stop.offset+(['ArrowRight','ArrowUp'].includes(e.key)?1:-1)*(e.shiftKey ? .1 : .01)));
+    state.stops.sort((a,b)=>a.offset-b.offset);this.stopIndex=order;this.writeStops(state.stops,'Move gradient stop');this.workspace.draw();
+    this.workspace.element.querySelector(`[data-gradient-stop="${order}"]`)?.focus();
   }
   penStyleTarget(){return this.pathLayer || (!this.path&&isPath(this.getLayer())?this.getLayer():null);}
   changePenStyle(control,commit){
@@ -117,19 +180,16 @@ export class ToolController {
     if(!same(edit.before,after)&&this.getDocument().layers.includes(edit.target))this.patch(edit.target,{shape:after},'Change path style');
   }
   change(e){
+    if(e.target.dataset.stop){this.changeStop(e.target,true);return;}
     if(e.target.dataset.penStyle){this.changePenStyle(e.target,true);return;}
     const el=e.target,key=el.dataset.setting,l=this.getLayer(),numeric=['number','range'].includes(el.type);
     if(key){let value=numeric?Number(el.value):el.value;if(numeric){if(el.value===''||!Number.isFinite(value))return;value=Math.max(Number(el.min),Math.min(Number(el.max),value));el.value=value;}this.settings[key]=value;
-      if(key==='gradientType'&&canGradient(l)&&l.shape.gradient&&!l.locked){const shape=clone(l.shape);shape.gradient.type=value;this.patch(l,{shape},'Change gradient type');}return;}
-    if(el.dataset.vector==='stop-index'){this.stopIndex=Number(el.value);this.renderControls();this.workspace.draw();return;}
-    if(!l||l.locked||!l.visible)return;const shape=clone(l.shape);
-    if(!shape.gradient)return;
-    if(el.dataset.gradient){const n=Number(el.value);if(!Number.isFinite(n)||Math.abs(n)>10)return;const [a,b]=el.dataset.gradient.split('.');shape.gradient[a][b]=n;}
-    if(el.dataset.stop){const k=el.dataset.stop,v=k==='colour'?el.value:Number(el.value);if(k!=='colour'&&(!Number.isFinite(v)||v<0||v>1))return;const stop=shape.gradient.stops[this.stopIndex];stop[k]=v;shape.gradient.stops.sort((a,b)=>a.offset-b.offset);this.stopIndex=shape.gradient.stops.indexOf(stop);}
-    if(validGradient(shape.gradient))this.patch(l,{shape},'Edit gradient');else this.notify('Gradient handles must be separated.');
+      if(key==='gradientType'&&canGradient(l)&&l.shape.gradient&&!l.locked&&l.visible){const shape=clone(l.shape);shape.gradient.type=value;this.patch(l,{shape},'Change gradient type');}return;}
   }
+
   action(e){
-    const action=e.target.closest('[data-tool-action]')?.dataset.toolAction;if(!action)return;
+    const button=e.target.closest('[data-tool-action]'),action=button?.dataset.toolAction;if(!action||button.disabled)return;
+    if(this.gradientAction(action,button))return;
     const l=this.getLayer();
     if(action==='rasterise'){this.cancel();this.rasterise();return;}
     if(action==='finish-path'){this.finishPath(false);return;}
@@ -150,10 +210,7 @@ export class ToolController {
       this.commitPathEdit(l,shape);this.renderControls();return;
     }
     if(!l.shape?.gradient)return;const shape=clone(l.shape),g=shape.gradient;
-    if(action==='sample-stop'){this.sampleTarget={layer:l,index:this.stopIndex};this.notify('Click the canvas to sample this stop.');return;}
     if(action==='solid'){shape.fillOpacity=g.solidFillOpacity ?? shape.fillOpacity;delete shape.gradient;}
-    if(action==='add-stop'&&g.stops.length<32){const stop={offset:.5,colour:this.settings.foreground,opacity:this.settings.opacity};g.stops.push(stop);g.stops.sort((a,b)=>a.offset-b.offset);this.stopIndex=g.stops.indexOf(stop);}
-    if(action==='remove-stop'&&g.stops.length>2){g.stops.splice(this.stopIndex,1);this.stopIndex=Math.max(0,this.stopIndex-1);}
     this.patch(l,{shape},'Edit gradient');this.renderControls();
   }
   route(type,e){
@@ -180,11 +237,13 @@ export class ToolController {
   capture(e){this.gesture.pointerId=e.pointerId;this.workspace.element.setPointerCapture(e.pointerId);}
   release(g){if(g?.pointerId!==undefined&&this.workspace.element.hasPointerCapture(g.pointerId))this.workspace.element.releasePointerCapture(g.pointerId);}
   cancel(){
+    const hadGradientEdit=!!this.gradientEdit;
+    this.finishGradientEdit(false);
     this.finishPenStyleEdit();
     const hadPath=!!this.path;
     this.token++;this.workerReject?.(new Error('Fill cancelled.'));this.workerReject=null;this.worker?.terminate();this.worker=null;this.busy=false;const g=this.gesture;this.gesture=null;
     if(g?.before&&g.layer){g.layer.shape=g.before;g.layer.transform=g.transform;}
-    this.path=null;this.pathLayer=null;this.updateFinishButton();this.sampleTarget=null;this.renderer.preview=null;this.release(g);this.preview();this.workspace.draw();if(hadPath)this.renderControls();
+    this.path=null;this.pathLayer=null;this.updateFinishButton();this.sampleTarget=null;this.renderer.preview=null;this.release(g);this.preview();this.workspace.draw();if(hadPath||hadGradientEdit)this.renderControls();
   }
   down(e){
     if(this.busy||this.gesture)return;const p=this.workspace.point(e),tool=this.workspace.tool,l=this.getLayer();
@@ -213,11 +272,13 @@ export class ToolController {
       if(l&&(l.locked||!l.visible)){this.notify('Select a visible, unlocked layer.');return;}
       let layer=l,isNew=!canGradient(l);
       if(isNew){layer=createLayer('shape',this.getDocument().canvas,{name:'Gradient'});Object.assign(layer.transform,{width:this.getDocument().canvas.width,height:this.getDocument().canvas.height});layer.shape.radius=0;}
-      const before=clone(layer.shape),point=this.local(p,layer),handle=e.target.closest('[data-gradient-handle]')?.dataset.gradientHandle;
-      const g=clone(layer.shape.gradient)||{type:this.settings.gradientType,solidFillOpacity:before.fillOpacity,start:point,end:point,stops:[{offset:0,colour:this.settings.foreground,opacity:this.settings.opacity},{offset:1,colour:this.settings.background,opacity:1}]};
-      if(!handle){g.start=point;g.end={x:point.x+1e-7,y:point.y};}
+      const before=clone(layer.shape),point=this.local(p,layer),handle=e.target.closest('[data-gradient-handle]')?.dataset.gradientHandle,stopHandle=e.target.closest('[data-gradient-stop]');
+      const g=clone(layer.shape.gradient)||{type:this.settings.gradientType,solidFillOpacity:before.fillOpacity,start:point,end:point,stops:clone(this.gradientState().stops)};
+      g.stops=editableStops(g.stops);
+      if(stopHandle)this.stopIndex=Number(stopHandle.dataset.gradientStop);
+      if(!handle&&!stopHandle){g.start=point;g.end={x:point.x+1e-7,y:point.y};}
       layer.shape.gradient=g;layer.shape.fillOpacity=before.gradient ? before.fillOpacity : before.fillOpacity || 1;
-      this.gesture={type:'gradient',layer,before,transform:clone(layer.transform),isNew,part:handle||'end',start:p};this.capture(e);this.workspace.draw();
+      this.gesture={type:'gradient',layer,before,transform:clone(layer.transform),isNew,part:stopHandle?'stop':handle||'end',order:this.stopIndex,start:p};this.capture(e);this.workspace.draw();
     }
   }
   move(e){
@@ -233,7 +294,9 @@ export class ToolController {
       if(g.part==='point'){const dx=point.x-a.x,dy=point.y-a.y;for(const h of [a.in,a.out]){h.x+=dx;h.y+=dy;}a.x=point.x;a.y=point.y;}
       else{a[g.part]=point;if(!e.altKey)a[g.part==='in'?'out':'in']={x:2*a.x-point.x,y:2*a.y-point.y};}this.preview();
     }
-    if(g.type==='gradient'){g.layer.shape.gradient[g.part]=this.local(p,g.layer);this.preview();}
+    if(g.type==='gradient'){const gradient=g.layer.shape.gradient,point=this.local(p,g.layer);
+      if(g.part==='stop'){const stop=gradient.stops.find(s=>s.order===g.order);if(stop&&stop.order>1&&Math.hypot(p.x-g.start.x,p.y-g.start.y)*this.workspace.view.zoom>1){stop.offset=Math.round(gradientOffset(point,gradient,g.layer.transform)*1e6)/1e6;gradient.stops.sort((a,b)=>a.offset-b.offset);}}
+      else gradient[g.part]=point;this.preview();}
     this.workspace.draw();
   }
   up(e){
@@ -251,6 +314,7 @@ export class ToolController {
       }else this.preview();
     }
     this.workspace.draw();this.renderControls();
+    if(g.type==='gradient'&&g.part==='stop')this.workspace.element.querySelector(`[data-gradient-stop="${g.order}"]`)?.focus({preventScroll:true});
   }
   paintPreview(){const g=this.gesture;if(!g)return;g.output=composeStroke(g.base,g.stroke,g.mask,g.settings.opacity,g.type==='eraser',g.buffers ||= {});this.renderer.preview={layerId:g.layer.id,canvas:g.output,revision:++this.revision};this.preview();this.workspace.draw();}
   async fill(point){
@@ -288,8 +352,13 @@ export class ToolController {
       const canvas=surface(doc.canvas.width,doc.canvas.height);await this.renderer.renderDocument(clone(doc),this.getAssets(),canvas);if(token!==this.token||doc!==this.getDocument())return;
       const rgba=canvas.getContext('2d').getImageData(Math.floor(p.x),Math.floor(p.y),1,1).data;if(!rgba[3]){this.notify('This pixel is fully transparent.');return;}
       const colour='#'+[...rgba.slice(0,3)].map(v=>v.toString(16).padStart(2,'0')).join(''),opacity=rgba[3]/255;
-      if(target&&doc.layers.includes(target.layer)&&!target.layer.locked&&target.layer.visible&&target.layer.shape.gradient?.stops[target.index]){const shape=clone(target.layer.shape);Object.assign(shape.gradient.stops[target.index],{colour,opacity});this.patch(target.layer,{shape},'Sample gradient colour');}
-      else{Object.assign(this.settings,{foreground:colour,opacity});this.notify(`Sampled ${colour}`);}this.renderControls();
+      if(target){
+        if(target.document!==doc)return;
+        if(target.layer){if(this.getLayer()!==target.layer||!doc.layers.includes(target.layer)||target.layer.locked||!target.layer.visible||!target.layer.shape.gradient)return;
+          const shape=clone(target.layer.shape);shape.gradient.stops=editableStops(shape.gradient.stops);const stop=shape.gradient.stops.find(s=>s.order===target.order);if(!stop)return;Object.assign(stop,{colour,opacity});this.patch(target.layer,{shape},'Sample gradient colour');
+        }else{const stop=this.gradientDefaults?.find(s=>s.order===target.order);if(stop)Object.assign(stop,{colour,opacity});}
+      }else{Object.assign(this.settings,{foreground:colour,opacity});this.notify(`Sampled ${colour}`);}this.renderControls();
+
     }catch(error){this.notify(error.message,true);}
   }
   normalise(layer,shape){
@@ -356,7 +425,18 @@ export class ToolController {
       points.forEach((a,i)=>{for(const h of ['in','out']){html+=`<path d="M${a.x} ${a.y}L${a[h].x} ${a[h].y}" stroke="#6799f5" stroke-width="${1/z}" pointer-events="none"/>`;if(Math.hypot(a[h].x-a.x,a[h].y-a.y)>1e-6)html+=circle(a[h],`data-anchor-handle="${h}" data-anchor-index="${i}" style="pointer-events:all"`);}const selected=i===(this.path?this.path.length-1:this.anchorIndex);html+=circle(a,`data-anchor-handle="point" data-anchor-index="${i}" data-selected-anchor="${selected}" style="pointer-events:all"`,selected);});
     }
     const gl=this.gesture?.type==='gradient'?this.gesture.layer:l;
-    if(this.workspace.tool==='gradient'&&gl?.visible&&!gl.locked&&gl?.shape?.gradient){const g=gl.shape.gradient,a=this.world(g.start,gl),b=this.world(g.end,gl);html+=`<path d="M${a.x} ${a.y}L${b.x} ${b.y}" stroke="#6799f5" stroke-width="${2/z}" pointer-events="none"/>`+circle(a,'data-gradient-handle="start" style="pointer-events:all"')+circle(b,'data-gradient-handle="end" style="pointer-events:all"');}
+    if(this.workspace.tool==='gradient'&&gl?.visible&&!gl.locked&&gl?.shape?.gradient){
+      const g=gl.shape.gradient,a=this.world(g.start,gl),b=this.world(g.end,gl),length=Math.hypot(b.x-a.x,b.y-a.y)||1;
+      html+=`<path d="M${a.x} ${a.y}L${b.x} ${b.y}" stroke="#6799f5" stroke-width="${2/z}" pointer-events="none"/>`+circle(a,'data-gradient-handle="start" style="pointer-events:all"')+circle(b,'data-gradient-handle="end" style="pointer-events:all"');
+      const stops=editableStops(g.stops),ordered=[...stops].sort((a,b)=>a.order-b.order);
+      for(const stop of stops.filter(s=>s.order>1)){
+        const index=ordered.indexOf(stop),x=a.x+(b.x-a.x)*stop.offset,y=a.y+(b.y-a.y)*stop.offset;
+        // Stagger coincident stops so every stop remains reachable; endpoints use geometry handles only.
+        const lane=stops.filter(s=>s.order>1&&s.order<stop.order&&Math.abs(s.offset-stop.offset)*length*z<14).length;
+        const distance=(16+lane*16)/z,hx=x-(b.y-a.y)/length*distance,hy=y+(b.x-a.x)/length*distance;
+        html+=`<path d="M${x} ${y}L${hx} ${hy}" stroke="#6799f5" stroke-width="${1/z}" pointer-events="none"/><circle cx="${hx}" cy="${hy}" r="${6/z}" fill="${stop.colour}" stroke="${stop.order===this.stopIndex?'#fff':'#6799f5'}" stroke-width="${(stop.order===this.stopIndex?3:1.5)/z}" data-gradient-stop="${stop.order}" tabindex="0" role="slider" aria-label="Stop ${index+1} position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(stop.offset*100)}" style="pointer-events:all;cursor:ew-resize"/>`;
+      }
+    }
     return html;
   }
 }

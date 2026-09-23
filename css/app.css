@@ -1023,3 +1023,14 @@ dialog .field-grid label {
 #tool-options .pen-stroke-options { border-left: 1px solid #505864; padding-left: 12px; }
 
 #tool-options .pen-path-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-left: 1px solid #505864; padding-left: 12px; max-width: 100%; }
+
+#tool-options .gradient-options { display:flex; flex-wrap:wrap; align-items:center; gap:10px 12px; border:0; padding:0; margin:0; min-width:0; }
+#tool-options .gradient-stops { display:flex; flex-wrap:wrap; align-items:center; gap:10px 12px; border-left:1px solid #505864; padding-left:12px; }
+#tool-options .gradient-stop { display:flex; align-items:center; gap:6px; white-space:nowrap; color:var(--muted); }
+#tool-options .gradient-add { border-left:1px solid #505864; padding-left:12px; }
+#tool-options .gradient-swatch, #tool-options .gradient-swatch:hover:not(:disabled), #tool-options .gradient-swatch:active:not(:disabled) { width:34px; height:30px; padding:3px; background:repeating-conic-gradient(#bbb 0% 25%, #fff 0% 50%) 50% / 10px 10px; }
+#tool-options .gradient-swatch span { display:block; width:100%; height:100%; background:var(--stop-colour); opacity:var(--stop-opacity); border-radius:2px; }
+#tool-options .gradient-colour-editor { position:fixed; inset:auto; margin:0; padding:12px; width:260px; max-width:calc(100vw - 16px); border:1px solid var(--line); border-radius:8px; background:var(--panel, #242830); color:var(--text); box-shadow:0 8px 28px #0008; }
+#tool-options .gradient-colour-editor:popover-open { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+#tool-options .gradient-colour-editor input[type=range] { width:110px; }
+[data-gradient-stop]:focus-visible { outline:none; stroke:var(--accent); }
