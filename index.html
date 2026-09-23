@@ -21,6 +21,11 @@
           <i class="bi bi-hand-index" aria-hidden="true"></i>
         </button>
         <span class="tool-divider"></span>
+        <button data-tool="marquee-rect" aria-pressed="false" aria-label="Rectangular marquee" title="Rectangular marquee (M)"><i class="bi bi-bounding-box-circles" aria-hidden="true"></i></button>
+        <button data-tool="marquee-ellipse" aria-pressed="false" aria-label="Elliptical marquee" title="Elliptical marquee (Shift M)"><i class="bi bi-circle" aria-hidden="true"></i></button>
+        <button data-tool="lasso" aria-pressed="false" aria-label="Lasso" title="Lasso (Q)"><i class="bi bi-bezier2" aria-hidden="true"></i></button>
+        <button data-tool="polygon-lasso" aria-pressed="false" aria-label="Polygonal lasso" title="Polygonal lasso (Shift Q)"><i class="bi bi-pentagon" aria-hidden="true"></i></button>
+        <span class="tool-divider"></span>
         <button data-action="text" aria-label="Add text" title="Add text (T)"><i class="bi bi-type" aria-hidden="true"></i></button>
         <button data-action="rectangle" aria-label="Add rectangle" title="Add rectangle (R)"><i class="bi bi-square" aria-hidden="true"></i></button>
         <button data-action="ellipse" aria-label="Add ellipse" title="Add ellipse (E)"><i class="bi bi-circle" aria-hidden="true"></i></button>
@@ -44,6 +49,15 @@
         <div id="empty-tip" class="empty-tip">
           <i class="bi bi-image" aria-hidden="true"></i><span>Drop an image here, or start with a shape.</span
           ><button data-action="import">Import your first image <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+        </div>
+        <div id="pixel-actions" class="pixel-actions" role="group" aria-label="Image selection actions" hidden>
+          <span id="selection-hint"></span>
+          <button data-pixel-action="all" aria-label="Select all image pixels" title="Select all (Ctrl/⌘ A)"><i class="bi bi-bounding-box" aria-hidden="true"></i></button>
+          <button data-pixel-action="copy" aria-label="Copy selected pixels" title="Copy (Ctrl/⌘ C)"><i class="bi bi-copy" aria-hidden="true"></i></button>
+          <button data-pixel-action="cut" aria-label="Cut selected pixels" title="Cut (Ctrl/⌘ X)"><i class="bi bi-scissors" aria-hidden="true"></i></button>
+          <button data-pixel-action="paste" aria-label="Paste copied pixels" title="Paste copied pixels"><i class="bi bi-clipboard" aria-hidden="true"></i></button>
+          <button data-pixel-action="delete" aria-label="Delete selected pixels" title="Delete pixels (Delete)"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+          <button data-pixel-action="deselect" aria-label="Deselect pixels" title="Deselect (Ctrl/⌘ D / Escape)"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
         </div>
         <div id="toast" role="status" aria-live="polite" hidden></div>
         <div id="processing" class="processing" hidden>Rendering…</div>
@@ -150,6 +164,12 @@
         <dd>T / R / E</dd>
         <dt>Line / Arrow</dt>
         <dd>L / A</dd>
+        <dt>Rectangle / Ellipse marquee</dt><dd>M / Shift M</dd>
+        <dt>Lasso / Polygonal lasso</dt><dd>Q / Shift Q</dd>
+        <dt>Close polygon</dt><dd>Enter / Double-click</dd>
+        <dt>Copy / Cut / Paste pixels</dt><dd>Ctrl/⌘ C / X / V</dd>
+        <dt>Select all / Deselect pixels</dt><dd>Ctrl/⌘ A / D</dd>
+        <dt>Delete selected pixels</dt><dd>Delete / Backspace</dd>
         <dt>Nudge / Large nudge</dt>
         <dd>Arrows / Shift Arrows</dd>
         <dt>Zoom / Fit</dt>

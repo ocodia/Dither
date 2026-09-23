@@ -816,3 +816,9 @@ dialog .field-grid label {
 .inspector-empty { margin: 18px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 
 #layers-resizer{height:6px;flex-shrink:0;cursor:row-resize;touch-action:none;background:linear-gradient(var(--line),var(--line)) center/100% 1px no-repeat}#layers-resizer:hover,#layers-resizer:focus-visible{background:var(--accent);outline:none}.resizing-panels,.resizing-panels *{cursor:row-resize!important;user-select:none!important}
+
+.workspace.pixel-tool { cursor: crosshair; }
+.pixel-actions { position: absolute; top: 12px; left: 12px; right: 12px; width: fit-content; max-width: calc(100% - 24px); display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 5px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); z-index: 3; cursor: default; box-shadow: 0 4px 16px #0003; }
+.pixel-actions button { width: 32px; height: 32px; padding: 0; }
+#selection-hint { color: var(--muted); font-size: 11px; padding: 0 8px; }
+#selection-hint:empty { display: none; }

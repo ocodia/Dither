@@ -1,6 +1,7 @@
 import { applyEffects, effectPadding, surface } from './effects.js';
 import { rad } from '../interaction/geometry.js';
 import { isLineLayer, arrowMetrics } from '../model/line.js';
+import { applyErasures } from './image-pixels.js';
 
 export function textLines(ctx, text, width, spacing) {
   const measure = str => ctx.measureText(str).width + Math.max(0, [...str].length - 1) * spacing;
@@ -63,12 +64,13 @@ export class DocumentRenderer {
   clear() { this.cache.clear(); }
   async renderLayer(layer, assets) {
     const { width, height } = layer.transform;
-    const key = JSON.stringify([layer.type, layer.assetId, layer.text, layer.shape, width, height, layer.effects]);
+    const key = JSON.stringify([layer.type, layer.assetId, layer.eraseRegions, layer.text, layer.shape, width, height, layer.effects]);
     if (this.cache.get(layer.id)?.key === key) return this.cache.get(layer.id).promise;
     const promise = (async () => {
       const padding = effectPadding(layer), canvas = surface(width + padding * 2, height + padding * 2), ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.translate(padding, padding);
       if (layer.type === 'image') { const image = assets.images.get(layer.assetId); if (!image) throw new Error(`Missing original image for ${layer.name}.`); ctx.drawImage(image, 0, 0, width, height); }
+      if (layer.type === 'image') applyErasures(ctx, layer.eraseRegions, width, height);
       if (layer.type === 'text') drawText(ctx, layer);
       if (layer.type === 'shape') drawShape(ctx, layer);
       ctx.setTransform(1, 0, 0, 1, 0, 0);

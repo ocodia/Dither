@@ -1,3 +1,5 @@
+import { validRegion } from './pixel-region.js';
+
 export const VERSION = 1;
 export const uid = () => crypto.randomUUID();
 export const clone = value => structuredClone(value);
@@ -41,6 +43,7 @@ export function validateDocument(doc) {
     if (!Number.isFinite(layer.opacity) || layer.opacity < 0 || layer.opacity > 1 || !Array.isArray(layer.effects)) throw new Error('Invalid layer properties.');
     if (typeof layer.name !== 'string' || typeof layer.visible !== 'boolean' || typeof layer.locked !== 'boolean' || typeof t.flipX !== 'boolean' || typeof t.flipY !== 'boolean') throw new Error('Invalid layer properties.');
     if (layer.type === 'image' && !assetIds.has(layer.assetId)) throw new Error('An image layer references a missing asset.');
+    if (layer.eraseRegions !== undefined && (layer.type !== 'image' || !Array.isArray(layer.eraseRegions) || !layer.eraseRegions.every(validRegion))) throw new Error('Invalid image pixel edits.');
     if (layer.type === 'text') {
       const p = layer.text;
       if (!p || typeof p.content !== 'string' || typeof p.fontFamily !== 'string' || !finite(p.fontSize, 1, 600) || !['400','500','700','900'].includes(p.fontWeight) || !['normal','italic'].includes(p.fontStyle) || !['left','center','right'].includes(p.align) || !colour(p.colour) || !finite(p.lineHeight,.5,4) || !finite(p.letterSpacing,-10,50)) throw new Error('Invalid text layer.');

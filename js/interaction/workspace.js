@@ -1,6 +1,7 @@
 import { clone } from '../model/document.js';
 import { hitTest, resizeTransform, lineEndpoints, moveLineEndpoint } from './geometry.js';
 import { isLineLayer } from '../model/line.js';
+import { isSelectionTool } from '../model/pixel-region.js';
 export class Workspace {
   constructor({ element, stage, overlay, getDocument, getSelected, select, preview, commit, beforeGesture, onView }) {
     Object.assign(this, { element, stage, overlay, getDocument, getSelected, select, preview, commit, beforeGesture, onView });
@@ -15,7 +16,7 @@ export class Workspace {
     new ResizeObserver(() => this.autoFit ? this.fit() : this.draw()).observe(element);
   }
   point(e) { const rect = this.element.getBoundingClientRect(); return { x: (e.clientX - rect.left - this.view.x) / this.view.zoom, y: (e.clientY - rect.top - this.view.y) / this.view.zoom }; }
-  setTool(tool) { this.tool = tool; this.element.classList.toggle('hand', tool === 'hand'); }
+  setTool(tool) { this.pixelSelection?.cancelDraft(); this.tool = tool; this.element.classList.toggle('hand', tool === 'hand'); this.element.classList.toggle('pixel-tool', isSelectionTool(tool)); this.draw(); }
   fit() { this.autoFit = true; const c = this.getDocument().canvas, { width, height } = this.element.getBoundingClientRect(); this.view.zoom = Math.max(.01, Math.min(2, (width - 110) / c.width, (height - 150) / c.height)); this.view.x = (width - c.width * this.view.zoom) / 2; this.view.y = (height - c.height * this.view.zoom) / 2; this.draw(); }
   zoomAt(factor, point = { x: this.element.clientWidth / 2, y: this.element.clientHeight / 2 }) {
     this.autoFit = false;
@@ -65,6 +66,7 @@ export class Workspace {
     this.overlay.setAttribute('viewBox', `0 0 ${c.width} ${c.height}`);
     const layer = this.getSelected();
     if (!layer || !layer.visible || layer.locked) this.overlay.innerHTML = '';
+    else if (this.pixelSelection && (isSelectionTool(this.tool) || this.pixelSelection.current())) this.overlay.innerHTML = this.pixelSelection.overlay(layer, zoom);
     else if (isLineLayer(layer)) {
       const [start, end] = lineEndpoints(layer.transform);
       this.overlay.innerHTML = `<g fill="white" stroke="#84abff" stroke-width="${1 / zoom}"><path d="M${start.x} ${start.y}L${end.x} ${end.y}" fill="none" stroke-dasharray="${3 / zoom} ${3 / zoom}"/>${[start, end].map((p, index) => `<circle data-endpoint="${index}" cx="${p.x}" cy="${p.y}" r="${5 / zoom}" style="pointer-events:all;cursor:crosshair"/>`).join('')}</g>`;
