@@ -43,7 +43,15 @@ try{
   await ready();assert.equal(await count(),beforeColour+1);await page.keyboard.press('Escape');
   for(let i=0;i<3;i++){await page.locator('[data-tool-action=add-stop]').click();await ready();}
   assert.equal(await stops().count(),6);assert.equal(await handles().count(),4);assert.ok(await page.locator('[data-tool-action=add-stop]').isDisabled());
+  const orderBefore=await stops().evaluateAll(els=>els.map(el=>el.dataset.stopOrder));
   await dragHandle(2,.1);assert.equal(await page.locator('[data-gradient-stop="2"]').getAttribute('aria-valuenow'),'10');
+  const orderAfter=await stops().evaluateAll(els=>els.map(el=>el.dataset.stopOrder));
+  assert.notDeepEqual(orderAfter,orderBefore);assert.equal(orderAfter[0],'0');assert.equal(orderAfter[1],'2');assert.equal(orderAfter.at(-1),'1');
+  assert.equal(await page.locator('[data-stop-order="2"] > span').textContent(),'Stop 2');
+  assert.equal(await page.locator('[data-gradient-stop="2"]').getAttribute('aria-label'),'Stop 2 position');
+  await key('Control+z');assert.deepEqual(await stops().evaluateAll(els=>els.map(el=>el.dataset.stopOrder)),orderBefore);
+  await key('Control+Shift+z');assert.deepEqual(await stops().evaluateAll(els=>els.map(el=>el.dataset.stopOrder)),orderAfter);
+  await dragHandle(2,.9,true);assert.deepEqual(await stops().evaluateAll(els=>els.map(el=>el.dataset.stopOrder)),orderAfter);
   await page.locator('[data-stop-order="3"] [data-tool-action=remove-stop]').click();await ready();assert.equal(await stops().count(),5);assert.ok(await page.locator('[data-tool-action=add-stop]').isEnabled());
   await key('Control+z');assert.equal(await stops().count(),6);
   await page.locator('[data-setting=gradientType]').selectOption('radial');await ready();await dragHandle(2,.6);assert.equal(await page.locator('[data-gradient-stop="2"]').getAttribute('aria-valuenow'),'60');

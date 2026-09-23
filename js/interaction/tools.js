@@ -14,6 +14,8 @@ const pathStyle=shape=>Object.fromEntries(penStyleKeys.map(key=>[key,shape[key]]
 const toolIcons={eyedropper:'eyedropper',brush:'paint-brush',eraser:'eraser-tool',fill:'paint-bucket',pen:'pen',gradient:'color-background'};
 const hexRGB=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+// Keep protected endpoints at the edges when stops share a position.
+const stopPositionOrder=(a,b)=>a.offset-b.offset || (a.order===1?Infinity:a.order)-(b.order===1?Infinity:b.order);
 const anchor=p=>({...p,in:{...p},out:{...p}});
 const field=(label,key,value,min,max,step=1)=>`<label><span>${label}</span><input data-setting="${key}" type="number" value="${value}" min="${min}" max="${max}" step="${step}"></label>`;
 
@@ -101,7 +103,7 @@ export class ToolController {
   gradientControls(){
     const {layer,stops,disabled}=this.gradientState(),type=layer?.shape.gradient.type||this.settings.gradientType;
     let html=`<fieldset class="gradient-options" ${disabled?'disabled':''}><label>Type<select aria-label="Gradient type" data-setting="gradientType"><option value="linear" ${type==='linear'?'selected':''}>Linear</option><option value="radial" ${type==='radial'?'selected':''}>Radial</option></select></label><div class="gradient-stops" role="group" aria-label="Gradient stops">`;
-    [...stops].sort((a,b)=>a.order-b.order).forEach((stop,i)=>{
+    [...stops].sort(stopPositionOrder).forEach((stop,i)=>{
       const label=`Stop ${i+1}`,id=`gradient-stop-${stop.order}`;
       html+=`<div class="gradient-stop" data-stop-order="${stop.order}"><span>${label}</span><button type="button" class="gradient-swatch" data-tool-action="edit-stop" aria-label="${label} colour and opacity" aria-haspopup="dialog" aria-controls="${id}" style="--stop-colour:${stop.colour};--stop-opacity:${stop.opacity}"><span></span></button>`;
       if(stop.order>1)html+=`<button type="button" data-tool-action="remove-stop" aria-label="Remove ${label.toLowerCase()}" title="Remove ${label.toLowerCase()}">${icon('delete')}</button>`;
@@ -155,7 +157,7 @@ export class ToolController {
     e.preventDefault();e.stopPropagation();const state=this.gradientState();if(state.disabled||!state.layer)return;
     const order=Number(handle.dataset.gradientStop),stop=state.stops.find(s=>s.order===order);if(!stop||order<2)return;
     stop.offset=Math.max(0,Math.min(1,stop.offset+(['ArrowRight','ArrowUp'].includes(e.key)?1:-1)*(e.shiftKey ? .1 : .01)));
-    state.stops.sort((a,b)=>a.offset-b.offset);this.stopIndex=order;this.writeStops(state.stops,'Move gradient stop');this.workspace.draw();
+    state.stops.sort((a,b)=>a.offset-b.offset);this.stopIndex=order;this.writeStops(state.stops,'Move gradient stop');this.renderControls();this.workspace.draw();
     this.workspace.element.querySelector(`[data-gradient-stop="${order}"]`)?.focus();
   }
   penStyleTarget(){return this.pathLayer || (!this.path&&isPath(this.getLayer())?this.getLayer():null);}
@@ -243,7 +245,7 @@ export class ToolController {
     const hadPath=!!this.path;
     this.token++;this.workerReject?.(new Error('Fill cancelled.'));this.workerReject=null;this.worker?.terminate();this.worker=null;this.busy=false;const g=this.gesture;this.gesture=null;
     if(g?.before&&g.layer){g.layer.shape=g.before;g.layer.transform=g.transform;}
-    this.path=null;this.pathLayer=null;this.updateFinishButton();this.sampleTarget=null;this.renderer.preview=null;this.release(g);this.preview();this.workspace.draw();if(hadPath||hadGradientEdit)this.renderControls();
+    this.path=null;this.pathLayer=null;this.updateFinishButton();this.sampleTarget=null;this.renderer.preview=null;this.release(g);this.preview();this.workspace.draw();if(hadPath||hadGradientEdit||g?.type==='gradient')this.renderControls();
   }
   down(e){
     if(this.busy||this.gesture)return;const p=this.workspace.point(e),tool=this.workspace.tool,l=this.getLayer();
@@ -295,7 +297,7 @@ export class ToolController {
       else{a[g.part]=point;if(!e.altKey)a[g.part==='in'?'out':'in']={x:2*a.x-point.x,y:2*a.y-point.y};}this.preview();
     }
     if(g.type==='gradient'){const gradient=g.layer.shape.gradient,point=this.local(p,g.layer);
-      if(g.part==='stop'){const stop=gradient.stops.find(s=>s.order===g.order);if(stop&&stop.order>1&&Math.hypot(p.x-g.start.x,p.y-g.start.y)*this.workspace.view.zoom>1){stop.offset=Math.round(gradientOffset(point,gradient,g.layer.transform)*1e6)/1e6;gradient.stops.sort((a,b)=>a.offset-b.offset);}}
+      if(g.part==='stop'){const stop=gradient.stops.find(s=>s.order===g.order);if(stop&&stop.order>1&&Math.hypot(p.x-g.start.x,p.y-g.start.y)*this.workspace.view.zoom>1){stop.offset=Math.round(gradientOffset(point,gradient,g.layer.transform)*1e6)/1e6;gradient.stops.sort((a,b)=>a.offset-b.offset);this.renderControls();}}
       else gradient[g.part]=point;this.preview();}
     this.workspace.draw();
   }
@@ -428,7 +430,7 @@ export class ToolController {
     if(this.workspace.tool==='gradient'&&gl?.visible&&!gl.locked&&gl?.shape?.gradient){
       const g=gl.shape.gradient,a=this.world(g.start,gl),b=this.world(g.end,gl),length=Math.hypot(b.x-a.x,b.y-a.y)||1;
       html+=`<path d="M${a.x} ${a.y}L${b.x} ${b.y}" stroke="#6799f5" stroke-width="${2/z}" pointer-events="none"/>`+circle(a,'data-gradient-handle="start" style="pointer-events:all"')+circle(b,'data-gradient-handle="end" style="pointer-events:all"');
-      const stops=editableStops(g.stops),ordered=[...stops].sort((a,b)=>a.order-b.order);
+      const stops=editableStops(g.stops),ordered=[...stops].sort(stopPositionOrder);
       for(const stop of stops.filter(s=>s.order>1)){
         const index=ordered.indexOf(stop),x=a.x+(b.x-a.x)*stop.offset,y=a.y+(b.y-a.y)*stop.offset;
         // Stagger coincident stops so every stop remains reachable; endpoints use geometry handles only.
