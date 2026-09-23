@@ -1,6 +1,6 @@
 {
   "id": "./",
-  "name": "Dither — Local Image Editor",
+  "name": "Dither",
   "short_name": "Dither",
   "description": "A local-first, non-destructive image compositor.",
   "start_url": "./",

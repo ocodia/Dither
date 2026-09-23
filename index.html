@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="theme-color" content="#181b20" />
     <meta name="description" content="A local-first, non-destructive image compositor. Your canvas, your computer." />
-    <title>Dither — local image editor</title>
+    <title>Dither</title>
     <link rel="icon" href="./icons/app-192.png" type="image/png" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="preload" href="./fonts/Inter/Inter_18pt-Regular.ttf" as="font" type="font/ttf" crossorigin />
@@ -15,31 +15,59 @@
   <body>
     <main class="editor">
       <nav class="tools" aria-label="Editing tools">
-        <button class="document-menu-toggle" popovertarget="document-menu" aria-label="Document actions" title="Document actions"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#document"></use></svg></button>
+        <button class="document-menu-toggle" popovertarget="document-menu" aria-label="Document actions" title="Document actions">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#document"></use></svg>
+        </button>
         <span class="tool-divider"></span>
-        <button data-tool="move" aria-pressed="true" aria-label="Move tool" title="Move (V)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#cursor"></use></svg></button>
+        <button data-tool="move" aria-pressed="true" aria-label="Move tool" title="Move (V)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#cursor"></use></svg>
+        </button>
         <button data-tool="hand" aria-pressed="false" aria-label="Pan tool" title="Pan (H / hold Space)">
           <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#hand-left"></use></svg>
         </button>
         <span class="tool-divider"></span>
-        <button data-tool="marquee-rect" aria-pressed="false" aria-label="Rectangular marquee" title="Rectangular marquee (M)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#square-hint"></use></svg></button>
-        <button data-tool="marquee-ellipse" aria-pressed="false" aria-label="Elliptical marquee" title="Elliptical marquee (Shift M)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#circle-hint"></use></svg></button>
-        <button data-tool="lasso" aria-pressed="false" aria-label="Lasso" title="Lasso (Q)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#lasso"></use></svg></button>
-        <button data-tool="polygon-lasso" aria-pressed="false" aria-label="Polygonal lasso" title="Polygonal lasso (Shift Q)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#pentagon"></use></svg></button>
-        <span class="tool-divider"></span>
-        <button data-action="text" aria-label="Add text" title="Add text (T)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#text-t"></use></svg></button>
-        <button data-action="rectangle" aria-label="Add rectangle" title="Add rectangle (R)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#square"></use></svg></button>
-        <button data-action="ellipse" aria-label="Add ellipse" title="Add ellipse (E)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#circle"></use></svg></button>
-        <button data-action="line" aria-label="Add line" title="Add line (L)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#line"></use></svg></button>
-        <button data-action="arrow" aria-label="Add arrow" title="Add arrow (A)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-up-right"></use></svg></button>
-        <span class="tool-divider"></span>
-        <button data-action="import" aria-label="Import images" title="Import images"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#image"></use></svg></button>
-        <div class="tool-utilities">
-        <button data-action="canvas" aria-label="Canvas properties" title="Canvas properties"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#resize"></use></svg></button>
-        <button data-action="panels" class="panel-toggle" aria-label="Toggle inspector" title="Toggle inspector"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#panel-right"></use></svg></button>
-        <button data-action="help" class="tool-help" aria-label="About Dither and shortcuts" title="About Dither and shortcuts">
-          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#question-circle"></use></svg>
+        <button data-tool="marquee-rect" aria-pressed="false" aria-label="Rectangular marquee" title="Rectangular marquee (M)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#square-hint"></use></svg>
         </button>
+        <button data-tool="marquee-ellipse" aria-pressed="false" aria-label="Elliptical marquee" title="Elliptical marquee (Shift M)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#circle-hint"></use></svg>
+        </button>
+        <button data-tool="lasso" aria-pressed="false" aria-label="Lasso" title="Lasso (Q)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#lasso"></use></svg>
+        </button>
+        <button data-tool="polygon-lasso" aria-pressed="false" aria-label="Polygonal lasso" title="Polygonal lasso (Shift Q)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#pentagon"></use></svg>
+        </button>
+        <span class="tool-divider"></span>
+        <button data-action="text" aria-label="Add text" title="Add text (T)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#text-t"></use></svg>
+        </button>
+        <button data-action="rectangle" aria-label="Add rectangle" title="Add rectangle (R)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#square"></use></svg>
+        </button>
+        <button data-action="ellipse" aria-label="Add ellipse" title="Add ellipse (E)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#circle"></use></svg>
+        </button>
+        <button data-action="line" aria-label="Add line" title="Add line (L)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#line"></use></svg>
+        </button>
+        <button data-action="arrow" aria-label="Add arrow" title="Add arrow (A)">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-up-right"></use></svg>
+        </button>
+        <span class="tool-divider"></span>
+        <button data-action="import" aria-label="Import images" title="Import images">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#image"></use></svg>
+        </button>
+        <div class="tool-utilities">
+          <button data-action="canvas" aria-label="Canvas properties" title="Canvas properties">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#resize"></use></svg>
+          </button>
+          <button data-action="panels" class="panel-toggle" aria-label="Toggle inspector" title="Toggle inspector">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#panel-right"></use></svg>
+          </button>
+          <button data-action="help" class="tool-help" aria-label="About Dither and shortcuts" title="About Dither and shortcuts">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#question-circle"></use></svg>
+          </button>
         </div>
       </nav>
       <section id="workspace" class="workspace" tabindex="0" aria-label="Canvas workspace. Use arrow keys to move a selected layer.">
@@ -49,19 +77,34 @@
         </div>
         <div id="pixel-actions" class="pixel-actions" role="group" aria-label="Image selection actions" hidden>
           <span id="selection-hint"></span>
-          <button data-pixel-action="all" aria-label="Select all image pixels" title="Select all (Ctrl/⌘ A)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#select-all-on"></use></svg></button>
-          <button data-pixel-action="copy" aria-label="Copy selected pixels" title="Copy (Ctrl/⌘ C)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#copy"></use></svg></button>
-          <button data-pixel-action="cut" aria-label="Cut selected pixels" title="Cut (Ctrl/⌘ X)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#cut"></use></svg></button>
-          <button data-pixel-action="paste" aria-label="Paste copied pixels" title="Paste copied pixels"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#clipboard"></use></svg></button>
-          <button data-pixel-action="delete" aria-label="Delete selected pixels" title="Delete pixels (Delete)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#delete"></use></svg></button>
-          <button data-pixel-action="deselect" aria-label="Deselect pixels" title="Deselect (Ctrl/⌘ D / Escape)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#dismiss"></use></svg></button>
+          <button data-pixel-action="all" aria-label="Select all image pixels" title="Select all (Ctrl/⌘ A)">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#select-all-on"></use></svg>
+          </button>
+          <button data-pixel-action="copy" aria-label="Copy selected pixels" title="Copy (Ctrl/⌘ C)">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#copy"></use></svg>
+          </button>
+          <button data-pixel-action="cut" aria-label="Cut selected pixels" title="Cut (Ctrl/⌘ X)">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#cut"></use></svg>
+          </button>
+          <button data-pixel-action="paste" aria-label="Paste copied pixels" title="Paste copied pixels">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#clipboard"></use></svg>
+          </button>
+          <button data-pixel-action="delete" aria-label="Delete selected pixels" title="Delete pixels (Delete)">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#delete"></use></svg>
+          </button>
+          <button data-pixel-action="deselect" aria-label="Deselect pixels" title="Deselect (Ctrl/⌘ D / Escape)">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#dismiss"></use></svg>
+          </button>
         </div>
         <div id="toast" role="status" aria-live="polite" hidden></div>
         <div id="processing" class="processing" hidden>Rendering…</div>
         <div class="zoom-controls">
-          <button data-action="zoom-out" aria-label="Zoom out" title="Zoom out"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#subtract"></use></svg></button
+          <button data-action="zoom-out" aria-label="Zoom out" title="Zoom out">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#subtract"></use></svg></button
           ><button data-action="zoom-reset" id="zoom-value" title="Reset zoom to 100%">100%</button
-          ><button data-action="zoom-in" aria-label="Zoom in" title="Zoom in"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#add"></use></svg></button><span></span
+          ><button data-action="zoom-in" aria-label="Zoom in" title="Zoom in">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#add"></use></svg></button
+          ><span></span
           ><button data-action="fit" aria-label="Fit canvas" title="Fit canvas (Ctrl/⌘ 0)">
             <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-expand"></use></svg>
           </button>
@@ -80,31 +123,55 @@
           <section id="effects" role="tabpanel" aria-labelledby="tab-effects" hidden></section>
           <section id="history" role="tabpanel" aria-labelledby="tab-history" hidden></section>
         </div>
-        <div id="layers-resizer" role="separator" tabindex="0" aria-label="Resize Layers panel" aria-orientation="horizontal" aria-controls="layers-panel" title="Drag to resize Layers. Arrow keys also adjust height."></div>
+        <div
+          id="layers-resizer"
+          role="separator"
+          tabindex="0"
+          aria-label="Resize Layers panel"
+          aria-orientation="horizontal"
+          aria-controls="layers-panel"
+          title="Drag to resize Layers. Arrow keys also adjust height."></div>
         <section id="layers-panel" class="layers-panel">
           <div class="panel-heading">
             <h2>Layers <span id="layer-count">0</span></h2>
             <div>
               <button data-action="duplicate" aria-label="Duplicate layer" title="Duplicate (Ctrl/⌘ D)">
                 <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#copy"></use></svg></button
-              ><button data-action="delete" aria-label="Delete layer" title="Delete layer"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#delete"></use></svg></button>
+              ><button data-action="delete" aria-label="Delete layer" title="Delete layer">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#delete"></use></svg>
+              </button>
             </div>
           </div>
           <div id="layers" class="layer-list" aria-label="Layers"></div>
           <div class="layer-footer">
-            <button data-action="lower" aria-label="Lower layer" title="Lower layer"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-down"></use></svg></button
-            ><button data-action="raise" aria-label="Raise layer" title="Raise layer"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-up"></use></svg></button>
+            <button data-action="lower" aria-label="Lower layer" title="Lower layer">
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-down"></use></svg></button
+            ><button data-action="raise" aria-label="Raise layer" title="Raise layer">
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-up"></use></svg>
+            </button>
           </div>
         </section>
       </aside>
     </main>
     <div id="document-menu" popover aria-label="Document actions">
-      <button data-action="new"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#document-add"></use></svg>New</button>
-      <button data-action="open" title="Open saved project (Ctrl/⌘ O)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#folder-open"></use></svg>Open</button>
-      <button data-action="save" title="Save locally (Ctrl/⌘ S)"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#save"></use></svg>Save</button>
-      <button data-action="export" title="Export as PNG"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#share"></use></svg>Export</button>
-      <button id="install-button" hidden><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-download"></use></svg>Install Dither</button>
-      <button id="update-button" hidden><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-sync"></use></svg>Update available</button>
+      <button data-action="new">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#document-add"></use></svg>New
+      </button>
+      <button data-action="open" title="Open saved project (Ctrl/⌘ O)">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#folder-open"></use></svg>Open
+      </button>
+      <button data-action="save" title="Save locally (Ctrl/⌘ S)">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#save"></use></svg>Save
+      </button>
+      <button data-action="export" title="Export as PNG">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#share"></use></svg>Export
+      </button>
+      <button id="install-button" hidden>
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-download"></use></svg>Install Dither
+      </button>
+      <button id="update-button" hidden>
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-sync"></use></svg>Update available
+      </button>
     </div>
     <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
     <dialog id="new-dialog" aria-labelledby="new-title">
@@ -135,7 +202,9 @@
         <p id="new-error" class="error" role="alert"></p>
         <div class="dialog-actions">
           <button type="button" data-action="open">Open saved</button><button type="button" data-close>Cancel</button
-          ><button type="submit" class="primary">Create document <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-right"></use></svg></button>
+          ><button type="submit" class="primary">
+            Create document <svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#arrow-right"></use></svg>
+          </button>
         </div>
       </form>
     </dialog>
@@ -146,7 +215,9 @@
     </dialog>
     <dialog id="help-dialog" aria-label="About Dither and shortcuts">
       <div class="about-brand"><img src="./icons/app-192.png" alt="" width="40" height="40" /><span>Dither</span></div>
-      <a class="about-link" href="https://github.com/ocodia" target="_blank" rel="noopener noreferrer"><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#code"></use></svg> GitHub · ocodia</a>
+      <a class="about-link" href="https://github.com/ocodia" target="_blank" rel="noopener noreferrer"
+        ><svg class="icon" aria-hidden="true" focusable="false"><use href="./icons/ui.svg#code"></use></svg> GitHub · ocodia</a
+      >
       <h1 id="help-title">Shortcuts</h1>
       <dl class="shortcuts">
         <dt>Undo / Redo</dt>
@@ -161,12 +232,18 @@
         <dd>T / R / E</dd>
         <dt>Line / Arrow</dt>
         <dd>L / A</dd>
-        <dt>Rectangle / Ellipse marquee</dt><dd>M / Shift M</dd>
-        <dt>Lasso / Polygonal lasso</dt><dd>Q / Shift Q</dd>
-        <dt>Close polygon</dt><dd>Enter / Double-click</dd>
-        <dt>Copy / Cut / Paste pixels</dt><dd>Ctrl/⌘ C / X / V</dd>
-        <dt>Select all / Deselect pixels</dt><dd>Ctrl/⌘ A / D</dd>
-        <dt>Delete selected pixels</dt><dd>Delete / Backspace</dd>
+        <dt>Rectangle / Ellipse marquee</dt>
+        <dd>M / Shift M</dd>
+        <dt>Lasso / Polygonal lasso</dt>
+        <dd>Q / Shift Q</dd>
+        <dt>Close polygon</dt>
+        <dd>Enter / Double-click</dd>
+        <dt>Copy / Cut / Paste pixels</dt>
+        <dd>Ctrl/⌘ C / X / V</dd>
+        <dt>Select all / Deselect pixels</dt>
+        <dd>Ctrl/⌘ A / D</dd>
+        <dt>Delete selected pixels</dt>
+        <dd>Delete / Backspace</dd>
         <dt>Nudge / Large nudge</dt>
         <dd>Arrows / Shift Arrows</dd>
         <dt>Zoom / Fit</dt>
