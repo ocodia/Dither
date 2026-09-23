@@ -14,6 +14,27 @@ page.on('dialog', dialog => dialog.accept());
 const base = process.env.DITHER_URL || 'http://127.0.0.1:4173/';
 const output = resolve('.test-results'); await mkdir(output, { recursive:true });
 const check = (name, details) => console.log(`PASS ${name}${details ? ` — ${details}` : ''}`);
+async function checkFluentIcons() {
+  const result = await page.evaluate(async () => {
+    const response = await fetch('./icons/ui.svg');
+    const sprite = new DOMParser().parseFromString(await response.text(), 'image/svg+xml');
+    const symbols = [...sprite.querySelectorAll('symbol')];
+    const ids = new Set(symbols.map(symbol => symbol.id));
+    const uses = [...document.querySelectorAll('svg.icon use')];
+    const missing = uses.map(use => use.getAttribute('href').split('#')[1]).filter(id => !ids.has(id));
+    const probe = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    probe.setAttribute('width', '20'); probe.setAttribute('height', '20');
+    const use = document.createElementNS(probe.namespaceURI, 'use');
+    use.setAttribute('href', './icons/ui.svg#cursor'); probe.append(use); document.body.append(probe);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const bounds = use.getBBox(); probe.remove();
+    return { ok: response.ok, count: uses.length, missing, rendered: bounds.width > 10 && bounds.height > 10,
+      viewBoxes: symbols.every(symbol => symbol.getAttribute('viewBox') === '0 0 20 20'),
+      legacy: document.querySelectorAll('.bi, link[href*="bootstrap"]').length };
+  });
+  assert.ok(result.ok && result.count > 0 && result.rendered && result.viewBoxes);
+  assert.deepEqual(result.missing, []); assert.equal(result.legacy, 0);
+}
 async function action(name) {
   const previous = await page.locator('[data-tab][aria-selected="true"]').getAttribute('data-tab');
   if (['new','open','save','export'].includes(name)) await page.locator('.document-menu-toggle').click();
@@ -145,16 +166,16 @@ try {
     assets.dispose();renderer.clear();return {firstMs:Math.round(first),moveMs:Math.round(moved),reused,responsive,width:canvas.width,height:canvas.height};
   });assert.ok(large.reused);assert.ok(large.responsive);assert.equal(large.width,4000);check('12-megapixel image dithering and cached movement',JSON.stringify(large));
 
-  await page.evaluate(()=>document.fonts.ready); const fontOK=await page.evaluate(()=>document.fonts.check('16px bootstrap-icons')); assert.ok(fontOK);
+  await checkFluentIcons();
   const unnamed = await page.locator('button').evaluateAll(buttons=>buttons.filter(b=>!b.textContent.trim()&&!b.getAttribute('aria-label')).length); assert.equal(unnamed,0);
   await page.setViewportSize({width:600,height:820}); await page.locator('[data-action=panels]').click();assert.ok(await page.locator('#inspector').isVisible()); await page.screenshot({path:resolve(output,'narrow.png')});
-  check('Local icon font, accessible button names and narrow-screen panels');
+  check('Fluent SVG icons, accessible button names and narrow-screen panels');
 
   await page.evaluate(async()=>{await navigator.serviceWorker.ready;});await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
   const cdp=await context.newCDPSession(page);const manifest=await cdp.send('Page.getAppManifest');assert.equal(manifest.errors.length,0);const installability=await cdp.send('Page.getInstallabilityErrors');assert.deepEqual(installability.installabilityErrors,[]);check('Manifest and Chromium installability checks');
   await context.setOffline(true);await page.reload();await page.locator('#new-dialog').waitFor();await page.locator('#new-dialog [data-action=open]').click();await page.locator('[data-project]').first().click();await page.waitForFunction(()=>document.querySelector('#layer-count').textContent==='7');
-  assert.ok(await page.evaluate(()=>document.fonts.ready.then(()=>document.fonts.check('16px bootstrap-icons'))));
-  check('Offline launch, cached icon fonts and saved-project reopening');
+  await checkFluentIcons();
+  check('Offline launch, cached Fluent SVG icons and saved-project reopening');
   await context.setOffline(false);
   assert.deepEqual(errors,[]);assert.deepEqual(failed,[]);check('No browser exceptions or failed HTTP resources');
   console.log(JSON.stringify({renderChecks,screenshots:output},null,2));

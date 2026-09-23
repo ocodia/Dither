@@ -58,7 +58,7 @@ js/interaction/             Shared geometry, object hit testing, viewport and ge
 js/history/                 Reversible commands and saved-state checkpoints
 js/storage/                 IndexedDB projects, binary assets and decoded image lifetime
 js/components/              Escaped property/effect/layer panel templates
-icons/                      Supplied Bootstrap assets and app installation icons
+icons/                      Fluent UI icons, generated UI sprite and app installation icons
 tests/                      Node unit tests and optional real-browser integration checks
 tools/                      Dependency-free dev server and optional icon regeneration
 ```
@@ -119,4 +119,4 @@ The integration suite exercises image import, native pointer transforms, modifie
 3. Add memory-budgeted caches, cancellable worker jobs and a reduced-resolution interaction preview for oversized effects.
 4. Extend cross-browser, touch and assistive-technology checks, then consider grouping and alignment tools.
 
-Bootstrap Icons retain their bundled MIT licence notices. App installation PNGs are derived from the supplied `icons/app-icon.svg`; `tools/generate-icons.mjs` is an optional maintenance helper, not a build requirement.
+UI icons use Microsoft Fluent UI System Icons under the MIT licence (see `icons/fluent-LICENSE`). Run `node tools/generate-fluent-icons.mjs` after changing the icon selection to rebuild the committed `icons/ui.svg` sprite from `icons/fluent`; no build step is needed to run the app. Legacy Bootstrap assets retain their bundled MIT licence notices. App installation PNGs are derived from the supplied `icons/app-icon.svg`; `tools/generate-icons.mjs` is an optional maintenance helper, not a build requirement.
